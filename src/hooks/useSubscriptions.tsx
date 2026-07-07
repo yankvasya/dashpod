@@ -1,5 +1,6 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import {
   getSubscriptions,
@@ -10,7 +11,19 @@ import {
 import { fetchPodcastFeed } from '@/services/rss';
 import type { Podcast } from '@/types/podcast';
 
-export function useSubscriptions() {
+interface SubscriptionsContextValue {
+  subscriptions: Podcast[];
+  loading: boolean;
+  subscribe: (feedUrl: string) => Promise<number>;
+  unsubscribe: (podcastId: number) => Promise<void>;
+  refreshAll: () => Promise<void>;
+  refresh: () => Promise<void>;
+}
+
+const SubscriptionsContext = createContext<SubscriptionsContextValue | null>(null);
+
+/** Wraps the app so every screen shares one subscriptions list instead of each fetching its own. */
+export function SubscriptionsProvider({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
   const [subscriptions, setSubscriptions] = useState<Podcast[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,5 +75,18 @@ export function useSubscriptions() {
     await refresh();
   }, [db, refreshFeed, refresh]);
 
-  return { subscriptions, loading, subscribe, unsubscribe, refreshAll, refresh };
+  const value = useMemo(
+    () => ({ subscriptions, loading, subscribe, unsubscribe, refreshAll, refresh }),
+    [subscriptions, loading, subscribe, unsubscribe, refreshAll, refresh]
+  );
+
+  return <SubscriptionsContext.Provider value={value}>{children}</SubscriptionsContext.Provider>;
+}
+
+export function useSubscriptions(): SubscriptionsContextValue {
+  const context = useContext(SubscriptionsContext);
+  if (!context) {
+    throw new Error('useSubscriptions must be used within a SubscriptionsProvider');
+  }
+  return context;
 }

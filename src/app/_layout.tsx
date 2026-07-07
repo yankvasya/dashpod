@@ -1,19 +1,19 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useEffect } from 'react';
 import { StyleSheet, useColorScheme, View } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
 import MiniPlayer from '@/components/player/MiniPlayer';
 import { BottomTabInset } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db/database';
+import { SubscriptionsProvider } from '@/hooks/useSubscriptions';
 import { configureAudioSession } from '@/services/audio';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
+export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
@@ -24,10 +24,18 @@ export default function TabLayout() {
     <SQLiteProvider databaseName="dashpod.db" onInit={migrateDbIfNeeded}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AnimatedSplashOverlay />
-        <AppTabs />
-        <View style={[styles.miniPlayerContainer, { bottom: BottomTabInset }]} pointerEvents="box-none">
-          <MiniPlayer />
-        </View>
+        <SubscriptionsProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="podcast/[feedUrl]"
+              options={{ headerShown: true, title: '', headerBackButtonDisplayMode: 'minimal' }}
+            />
+          </Stack>
+          <View style={[styles.miniPlayerContainer, { bottom: BottomTabInset }]} pointerEvents="box-none">
+            <MiniPlayer />
+          </View>
+        </SubscriptionsProvider>
       </ThemeProvider>
     </SQLiteProvider>
   );

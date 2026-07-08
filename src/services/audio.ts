@@ -7,7 +7,7 @@ let player: AudioPlayer | null = null;
 /** Returns the app's single persistent audio player, creating it on first use. */
 export function getPlayer(): AudioPlayer {
   if (!player) {
-    player = createAudioPlayer(null, { updateInterval: 1000 });
+    player = createAudioPlayer(null, { updateInterval: 250 });
   }
   return player;
 }
@@ -21,7 +21,11 @@ export async function configureAudioSession(): Promise<void> {
   });
 }
 
-export function loadEpisode(episode: Episode, podcastTitle: string, podcastArtworkUrl: string): void {
+export function loadEpisode(
+  episode: Pick<Episode, 'audioUrl' | 'title' | 'artworkUrl'>,
+  podcastTitle: string,
+  podcastArtworkUrl: string
+): void {
   const activePlayer = getPlayer();
   activePlayer.replace(episode.audioUrl);
   const metadata: AudioMetadata = {

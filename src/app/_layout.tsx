@@ -8,6 +8,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import MiniPlayer from '@/components/player/MiniPlayer';
 import { BottomTabInset } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db/database';
+import { PlayerProvider } from '@/hooks/usePlayer';
 import { SubscriptionsProvider } from '@/hooks/useSubscriptions';
 import { configureAudioSession } from '@/services/audio';
 
@@ -25,16 +26,19 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AnimatedSplashOverlay />
         <SubscriptionsProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="podcast/[feedUrl]"
-              options={{ headerShown: true, title: '', headerBackButtonDisplayMode: 'minimal' }}
-            />
-          </Stack>
-          <View style={[styles.miniPlayerContainer, { bottom: BottomTabInset }]} pointerEvents="box-none">
-            <MiniPlayer />
-          </View>
+          <PlayerProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen
+                name="podcast/[feedUrl]"
+                options={{ headerShown: true, title: '', headerBackButtonDisplayMode: 'minimal' }}
+              />
+              <Stack.Screen name="player" options={{ presentation: 'modal', headerShown: false }} />
+            </Stack>
+            <View style={[styles.miniPlayerContainer, { bottom: BottomTabInset }]} pointerEvents="box-none">
+              <MiniPlayer />
+            </View>
+          </PlayerProvider>
         </SubscriptionsProvider>
       </ThemeProvider>
     </SQLiteProvider>

@@ -1,12 +1,14 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
+import { usePlayer } from '@/hooks/usePlayer';
 import { usePodcastDetail } from '@/hooks/usePodcastDetail';
 
 function formatDuration(seconds: number): string {
@@ -29,14 +31,36 @@ function formatDate(unixSeconds: number): string {
 export default function PodcastDetailScreen() {
   const { feedUrl } = useLocalSearchParams<{ feedUrl: string }>();
   const navigation = useNavigation();
+  const router = useRouter();
   const { podcast, episodes, isSubscribed, loading, refreshing, subscribing, refresh, toggleSubscription } =
     usePodcastDetail(feedUrl);
+  const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
 
   useEffect(() => {
     if (podcast) {
       navigation.setOptions({ title: podcast.title });
     }
   }, [navigation, podcast]);
+
+  async function handlePlayPause(episode: (typeof episodes)[number]) {
+    if (nowPlaying?.episode.guid === episode.guid) {
+      if (status.playing) {
+        pause();
+      } else {
+        play();
+      }
+    } else if (podcast) {
+      await loadEpisode(episode, podcast.title, podcast.artworkUrl);
+      play();
+    }
+  }
+
+  function handleViewEpisode(episode: (typeof episodes)[number]) {
+    if (nowPlaying?.episode.guid !== episode.guid && podcast) {
+      loadEpisode(episode, podcast.title, podcast.artworkUrl);
+    }
+    router.push('/player');
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -87,16 +111,30 @@ export default function PodcastDetailScreen() {
             ) : null
           }
           ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
-          renderItem={({ item }) => (
-            <ThemedView style={styles.episodeRow}>
-              <ThemedText numberOfLines={2}>{item.title}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {[formatDate(item.publishedAt), formatDuration(item.durationSeconds)]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </ThemedText>
-            </ThemedView>
-          )}
+          renderItem={({ item }) => {
+            const isCurrent = nowPlaying?.episode.guid === item.guid;
+            const progress =
+              isCurrent && status.duration > 0 ? status.currentTime / status.duration : 0;
+            const isLoading = isCurrent && (episodeLoading || status.isBuffering);
+            return (
+              <ThemedView style={styles.episodeRow}>
+                <Pressable style={styles.episodeText} onPress={() => handleViewEpisode(item)}>
+                  <ThemedText numberOfLines={2}>{item.title}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {[formatDate(item.publishedAt), formatDuration(item.durationSeconds)]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </ThemedText>
+                </Pressable>
+                <EpisodePlayButton
+                  playing={isCurrent && status.playing}
+                  loading={isLoading}
+                  progress={progress}
+                  onPress={() => handlePlayPause(item)}
+                />
+              </ThemedView>
+            );
+          }}
         />
       </SafeAreaView>
     </ThemedView>
@@ -136,8 +174,14 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   episodeRow: {
-    gap: Spacing.half,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
     paddingVertical: Spacing.three,
+  },
+  episodeText: {
+    flex: 1,
+    gap: Spacing.half,
   },
   separator: {
     height: StyleSheet.hairlineWidth,

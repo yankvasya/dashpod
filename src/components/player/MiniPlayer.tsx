@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
-import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
+import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -18,6 +18,7 @@ export default function MiniPlayer() {
 
   const artworkUrl = nowPlaying.episode.artworkUrl ?? nowPlaying.podcastArtworkUrl;
   const isLoading = episodeLoading || status.isBuffering;
+  const progress = status.duration > 0 ? status.currentTime / status.duration : 0;
 
   return (
     <Pressable
@@ -34,16 +35,13 @@ export default function MiniPlayer() {
           {nowPlaying.podcastTitle}
         </ThemedText>
       </ThemedView>
-      <Pressable
+      <EpisodePlayButton
+        playing={status.playing}
+        loading={isLoading}
+        progress={progress}
         onPress={() => (status.playing ? pause() : play())}
-        hitSlop={8}
-        style={styles.playButton}>
-        {isLoading ? (
-          <ActivityIndicator size="small" color={theme.text} />
-        ) : (
-          <PlayPauseIcon playing={status.playing} size={22} color={theme.text} />
-        )}
-      </Pressable>
+        size={32}
+      />
     </Pressable>
   );
 }
@@ -70,8 +68,5 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
     backgroundColor: 'transparent',
-  },
-  playButton: {
-    padding: Spacing.two,
   },
 });

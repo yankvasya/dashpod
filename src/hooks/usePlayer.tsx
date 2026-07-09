@@ -45,6 +45,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const player = getPlayer();
   const status = useAudioPlayerStatus(player);
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
+  const [episodeLoadingRaw, setEpisodeLoadingRaw] = useState(false);
   const [episodeLoading, setEpisodeLoading] = useState(false);
   const segmentRef = useRef<ListeningSegment | null>(null);
   const nowPlayingRef = useRef<NowPlaying | null>(null);
@@ -71,10 +72,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   );
 
   const persistPosition = useCallback(
-    async (position: number) => {
+    async (position: number, isFinished = false) => {
       const episode = nowPlayingRef.current?.episode;
       if (!episode || episode.id == null) return;
-      await setPlaybackState(db, { episodeId: episode.id, position, updatedAt: nowSeconds() });
+      await setPlaybackState(db, {
+        episodeId: episode.id,
+        position,
+        isFinished,
+        updatedAt: nowSeconds(),
+      });
     },
     [db]
   );
@@ -84,14 +90,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       // Flush the outgoing episode's segment in the background — don't block the UI switching
       // to the new episode on a DB write for the old one.
       flushSegment(status.currentTime);
-      setEpisodeLoading(true);
+      setEpisodeLoadingRaw(true);
       loadEpisodeIntoPlayer(episode, podcastTitle, podcastArtworkUrl);
       setNowPlaying({ episode, podcastTitle, podcastArtworkUrl });
       if (episode.id != null) {
-        const savedState = await getPlaybackState(db, episode.id);
-        if (savedState && savedState.position > 0) {
-          await player.seekTo(savedState.position);
-        }
+        // Resume-position lookup runs in the background rather than being awaited here — the
+        // caller's play() (for the play-pause-button path) fires right after this resolves, and
+        // waiting on a DB round-trip first left a window where the UI could flash an intermediate
+        // play/pause state before playback actually started.
+        getPlaybackState(db, episode.id).then((savedState) => {
+          if (savedState && savedState.position > 0) {
+            player.seekTo(savedState.position);
+          }
+        });
       }
     },
     [db, flushSegment, player, status.currentTime]
@@ -135,14 +146,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!status.didJustFinish || !nowPlaying) return;
-    flushSegment(status.duration).then(() => persistPosition(0));
+    flushSegment(status.duration).then(() => persistPosition(0, true));
   }, [status.didJustFinish, status.duration, nowPlaying, flushSegment, persistPosition]);
 
   useEffect(() => {
-    if (episodeLoading && status.isLoaded && !status.isBuffering) {
-      setEpisodeLoading(false);
+    if (episodeLoadingRaw && status.isLoaded && !status.isBuffering) {
+      setEpisodeLoadingRaw(false);
     }
-  }, [episodeLoading, status.isLoaded, status.isBuffering]);
+  }, [episodeLoadingRaw, status.isLoaded, status.isBuffering]);
+
+  // Debounce the *displayed* loading state: local/already-buffered sources often resolve within
+  // a few ms, and flashing a spinner for that is worse than just not showing one. Only show it if
+  // loading is still ongoing after a short delay; hide it immediately once it's done.
+  useEffect(() => {
+    if (!episodeLoadingRaw) {
+      setEpisodeLoading(false);
+      return;
+    }
+    const timeout = setTimeout(() => setEpisodeLoading(true), 150);
+    return () => clearTimeout(timeout);
+  }, [episodeLoadingRaw]);
 
   const value = useMemo(
     () => ({ nowPlaying, status, episodeLoading, loadEpisode, play, pause, seekTo, setRate }),

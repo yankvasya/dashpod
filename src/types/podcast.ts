@@ -37,7 +37,35 @@ export interface ListeningEvent {
 export interface PlaybackState {
   episodeId: number;
   position: number;
+  isFinished: boolean;
   updatedAt: number;
+}
+
+/** A locally downloaded audio file for an episode. */
+export interface Download {
+  episodeId: number;
+  localUri: string;
+  fileSizeBytes: number;
+  downloadedAt: number;
+}
+
+/** A downloaded episode joined with its podcast/episode/playback info, for the Downloads list. */
+export interface DownloadedEpisode {
+  episodeId: number;
+  podcastId: number;
+  guid: string;
+  podcastTitle: string;
+  episodeTitle: string;
+  description: string;
+  artworkUrl: string;
+  audioUrl: string;
+  localUri: string;
+  fileSizeBytes: number;
+  downloadedAt: number;
+  durationSeconds: number;
+  publishedAt: number;
+  position: number;
+  isFinished: boolean;
 }
 
 /** Aggregated listening statistics for a single day. */

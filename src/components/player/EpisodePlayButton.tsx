@@ -1,6 +1,7 @@
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
+import { LoadingRing } from '@/components/player/LoadingRing';
 import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -29,38 +30,40 @@ export function EpisodePlayButton({
 
   return (
     <Pressable onPress={onPress} hitSlop={8} style={[styles.container, { width: size, height: size }]}>
-      <Svg width={size} height={size} style={styles.ring}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={theme.backgroundSelected}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        {clampedProgress > 0 && (
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={theme.accent}
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            rotation={-90}
-            origin={`${size / 2}, ${size / 2}`}
-          />
-        )}
-      </Svg>
-      <View style={styles.iconContainer}>
-        {loading ? (
-          <ActivityIndicator size="small" color={theme.text} />
-        ) : (
-          <PlayPauseIcon playing={playing} size={size * 0.4} color={theme.text} />
-        )}
-      </View>
+      {loading ? (
+        <LoadingRing size={size} color={theme.accent} strokeWidth={strokeWidth} />
+      ) : (
+        <>
+          <Svg width={size} height={size} style={styles.ring}>
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={theme.backgroundSelected}
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+            {clampedProgress > 0 && (
+              <Circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                stroke={theme.accent}
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeDasharray={`${circumference} ${circumference}`}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                rotation={-90}
+                origin={`${size / 2}, ${size / 2}`}
+              />
+            )}
+          </Svg>
+          <View style={styles.iconContainer}>
+            <PlayPauseIcon playing={playing} size={size * 0.4} color={theme.text} />
+          </View>
+        </>
+      )}
     </Pressable>
   );
 }

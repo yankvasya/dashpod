@@ -64,4 +64,6 @@ export const Spacing = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+/** Native tab bar height only, excluding the safe-area bottom inset — combine with `useSafeAreaInsets().bottom` for absolute positioning above the tab bar. */
+export const BottomTabBarHeight = Platform.select({ ios: 49, android: 56 }) ?? 0;
 export const MaxContentWidth = 800;

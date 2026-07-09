@@ -27,6 +27,11 @@ export default function AppTabs() {
           renderingMode="template"
         />
       </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="downloads">
+        <NativeTabs.Trigger.Label>Downloads</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="arrow.down.circle" drawable="stat_sys_download" />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

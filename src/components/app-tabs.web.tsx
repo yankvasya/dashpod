@@ -25,6 +25,9 @@ export default function AppTabs() {
           <TabTrigger name="my-podcasts" href="/my-podcasts" asChild>
             <TabButton>My Podcasts</TabButton>
           </TabTrigger>
+          <TabTrigger name="downloads" href="/downloads" asChild>
+            <TabButton>Downloads</TabButton>
+          </TabTrigger>
         </CustomTabList>
       </TabList>
     </Tabs>

@@ -1,19 +1,14 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
 
-import { getEpisodesForPodcast, upsertEpisodes } from '@/db/queries';
+import { getEpisodesForPodcast, getPlaybackStatesForPodcast, upsertEpisodes } from '@/db/queries';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
 import { fetchPodcastFeed } from '@/services/rss';
-import type { Episode, Podcast } from '@/types/podcast';
+import type { Episode, PlaybackState, Podcast } from '@/types/podcast';
 
 type PreviewPodcast = Omit<Podcast, 'id' | 'lastFetchedAt'>;
 type PreviewEpisode = Omit<Episode, 'id' | 'podcastId'>;
 
-/**
- * Shows a podcast by feed URL. If the user is already subscribed, reads the
- * cached podcast/episodes from SQLite; otherwise fetches the feed live for a
- * preview, without persisting anything until the user taps subscribe.
- */
 export function usePodcastDetail(feedUrl: string) {
   const db = useSQLiteContext();
   const { subscriptions, subscribe, unsubscribe } = useSubscriptions();
@@ -21,6 +16,7 @@ export function usePodcastDetail(feedUrl: string) {
 
   const [podcast, setPodcast] = useState<Podcast | PreviewPodcast | null>(null);
   const [episodes, setEpisodes] = useState<(Episode | PreviewEpisode)[]>([]);
+  const [playbackStates, setPlaybackStates] = useState<Map<number, PlaybackState>>(new Map());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
@@ -30,11 +26,17 @@ export function usePodcastDetail(feedUrl: string) {
     try {
       if (existing) {
         setPodcast(existing);
-        setEpisodes(await getEpisodesForPodcast(db, existing.id));
+        const [loadedEpisodes, loadedPlaybackStates] = await Promise.all([
+          getEpisodesForPodcast(db, existing.id),
+          getPlaybackStatesForPodcast(db, existing.id),
+        ]);
+        setEpisodes(loadedEpisodes);
+        setPlaybackStates(loadedPlaybackStates);
       } else {
         const feed = await fetchPodcastFeed(feedUrl);
         setPodcast(feed.podcast);
         setEpisodes(feed.episodes);
+        setPlaybackStates(new Map());
       }
     } finally {
       setLoading(false);
@@ -51,7 +53,12 @@ export function usePodcastDetail(feedUrl: string) {
       if (existing) {
         const feed = await fetchPodcastFeed(feedUrl);
         await upsertEpisodes(db, existing.id, feed.episodes);
-        setEpisodes(await getEpisodesForPodcast(db, existing.id));
+        const [loadedEpisodes, loadedPlaybackStates] = await Promise.all([
+          getEpisodesForPodcast(db, existing.id),
+          getPlaybackStatesForPodcast(db, existing.id),
+        ]);
+        setEpisodes(loadedEpisodes);
+        setPlaybackStates(loadedPlaybackStates);
       } else {
         await load();
       }
@@ -76,6 +83,7 @@ export function usePodcastDetail(feedUrl: string) {
   return {
     podcast,
     episodes,
+    playbackStates,
     isSubscribed: Boolean(existing),
     loading,
     refreshing,

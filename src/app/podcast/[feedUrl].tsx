@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,39 +9,43 @@ import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useDownloads } from '@/hooks/useDownloads';
+import { useTheme } from '@/hooks/use-theme';
 import { usePlayer } from '@/hooks/usePlayer';
 import { usePodcastDetail } from '@/hooks/usePodcastDetail';
-
-function formatDuration(seconds: number): string {
-  if (!seconds) return '';
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
-}
-
-function formatDate(unixSeconds: number): string {
-  if (!unixSeconds) return '';
-  return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
-}
+import type { Episode } from '@/types/podcast';
+import { formatDate, formatDuration } from '@/utils/format';
 
 export default function PodcastDetailScreen() {
   const { feedUrl } = useLocalSearchParams<{ feedUrl: string }>();
   const navigation = useNavigation();
   const router = useRouter();
-  const { podcast, episodes, isSubscribed, loading, refreshing, subscribing, refresh, toggleSubscription } =
-    usePodcastDetail(feedUrl);
+  const theme = useTheme();
+  const {
+    podcast,
+    episodes,
+    playbackStates,
+    isSubscribed,
+    loading,
+    refreshing,
+    subscribing,
+    refresh,
+    toggleSubscription,
+  } = usePodcastDetail(feedUrl);
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
+  const { isDownloaded, getDownloadedUri, downloadingEpisodeIds, downloadEpisode, removeDownload } =
+    useDownloads();
 
   useEffect(() => {
     if (podcast) {
       navigation.setOptions({ title: podcast.title });
     }
   }, [navigation, podcast]);
+
+  function resolveForPlayback(episode: (typeof episodes)[number]) {
+    const localUri = 'id' in episode && episode.id != null ? getDownloadedUri(episode.id) : null;
+    return localUri ? { ...episode, audioUrl: localUri } : episode;
+  }
 
   async function handlePlayPause(episode: (typeof episodes)[number]) {
     if (nowPlaying?.episode.guid === episode.guid) {
@@ -50,16 +55,24 @@ export default function PodcastDetailScreen() {
         play();
       }
     } else if (podcast) {
-      await loadEpisode(episode, podcast.title, podcast.artworkUrl);
+      await loadEpisode(resolveForPlayback(episode), podcast.title, podcast.artworkUrl);
       play();
     }
   }
 
   function handleViewEpisode(episode: (typeof episodes)[number]) {
     if (nowPlaying?.episode.guid !== episode.guid && podcast) {
-      loadEpisode(episode, podcast.title, podcast.artworkUrl);
+      loadEpisode(resolveForPlayback(episode), podcast.title, podcast.artworkUrl);
     }
     router.push('/player');
+  }
+
+  async function handleDownloadPress(episode: Episode) {
+    if (isDownloaded(episode.id)) {
+      await removeDownload(episode.id);
+    } else {
+      await downloadEpisode(episode);
+    }
   }
 
   return (
@@ -113,11 +126,22 @@ export default function PodcastDetailScreen() {
           ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
           renderItem={({ item }) => {
             const isCurrent = nowPlaying?.episode.guid === item.guid;
-            const progress =
-              isCurrent && status.duration > 0 ? status.currentTime / status.duration : 0;
+            const hasId = 'id' in item && item.id != null;
+            const savedState = hasId ? playbackStates.get((item as Episode).id) : undefined;
+            const progress = isCurrent
+              ? status.duration > 0
+                ? status.currentTime / status.duration
+                : 0
+              : savedState && item.durationSeconds > 0
+                ? savedState.position / item.durationSeconds
+                : 0;
             const isLoading = isCurrent && (episodeLoading || status.isBuffering);
+            const isFinished = savedState?.isFinished ?? false;
+            const downloaded = hasId && isDownloaded((item as Episode).id);
+            const downloading = hasId && downloadingEpisodeIds.has((item as Episode).id);
+
             return (
-              <ThemedView style={styles.episodeRow}>
+              <ThemedView style={[styles.episodeRow, isFinished && styles.episodeRowFinished]}>
                 <Pressable style={styles.episodeText} onPress={() => handleViewEpisode(item)}>
                   <ThemedText numberOfLines={2}>{item.title}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
@@ -126,6 +150,27 @@ export default function PodcastDetailScreen() {
                       .join(' · ')}
                   </ThemedText>
                 </Pressable>
+                {hasId && (
+                  <Pressable
+                    onPress={() => handleDownloadPress(item as Episode)}
+                    disabled={downloading}
+                    hitSlop={8}
+                    style={styles.downloadButton}>
+                    {downloading ? (
+                      <ActivityIndicator size="small" color={theme.textSecondary} />
+                    ) : (
+                      <SymbolView
+                        tintColor={downloaded ? theme.accent : theme.textSecondary}
+                        name={
+                          downloaded
+                            ? { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }
+                            : { ios: 'arrow.down.circle', android: 'file_download', web: 'file_download' }
+                        }
+                        size={20}
+                      />
+                    )}
+                  </Pressable>
+                )}
                 <EpisodePlayButton
                   playing={isCurrent && status.playing}
                   loading={isLoading}
@@ -176,12 +221,18 @@ const styles = StyleSheet.create({
   episodeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two,
     paddingVertical: Spacing.three,
+  },
+  episodeRowFinished: {
+    opacity: 0.5,
   },
   episodeText: {
     flex: 1,
     gap: Spacing.half,
+  },
+  downloadButton: {
+    padding: Spacing.one,
   },
   separator: {
     height: StyleSheet.hairlineWidth,

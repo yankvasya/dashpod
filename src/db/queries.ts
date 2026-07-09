@@ -1,6 +1,14 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { DayStats, Episode, ListeningEvent, PlaybackState, Podcast } from '@/types/podcast';
+import type {
+  DayStats,
+  Download,
+  DownloadedEpisode,
+  Episode,
+  ListeningEvent,
+  PlaybackState,
+  Podcast,
+} from '@/types/podcast';
 
 type PodcastRow = {
   id: number;
@@ -157,26 +165,56 @@ export async function recordListeningEvent(
   );
 }
 
+type PlaybackStateRow = {
+  episode_id: number;
+  position: number;
+  is_finished: number;
+  updated_at: number;
+};
+
+function toPlaybackState(row: PlaybackStateRow): PlaybackState {
+  return {
+    episodeId: row.episode_id,
+    position: row.position,
+    isFinished: row.is_finished === 1,
+    updatedAt: row.updated_at,
+  };
+}
+
 export async function getPlaybackState(
   db: SQLiteDatabase,
   episodeId: number
 ): Promise<PlaybackState | null> {
-  const row = await db.getFirstAsync<{ episode_id: number; position: number; updated_at: number }>(
+  const row = await db.getFirstAsync<PlaybackStateRow>(
     'SELECT * FROM playback_state WHERE episode_id = ?',
     [episodeId]
   );
-  if (!row) return null;
-  return { episodeId: row.episode_id, position: row.position, updatedAt: row.updated_at };
+  return row ? toPlaybackState(row) : null;
+}
+
+/** All playback states for a podcast's episodes, keyed by episode id — used to show resume progress and gray out finished episodes in a list without one query per row. */
+export async function getPlaybackStatesForPodcast(
+  db: SQLiteDatabase,
+  podcastId: number
+): Promise<Map<number, PlaybackState>> {
+  const rows = await db.getAllAsync<PlaybackStateRow>(
+    `SELECT ps.* FROM playback_state ps
+     JOIN episodes e ON e.id = ps.episode_id
+     WHERE e.podcast_id = ?`,
+    [podcastId]
+  );
+  return new Map(rows.map((row) => [row.episode_id, toPlaybackState(row)]));
 }
 
 export async function setPlaybackState(db: SQLiteDatabase, state: PlaybackState): Promise<void> {
   await db.runAsync(
-    `INSERT INTO playback_state (episode_id, position, updated_at)
-     VALUES (?, ?, ?)
+    `INSERT INTO playback_state (episode_id, position, is_finished, updated_at)
+     VALUES (?, ?, ?, ?)
      ON CONFLICT(episode_id) DO UPDATE SET
        position = excluded.position,
+       is_finished = excluded.is_finished,
        updated_at = excluded.updated_at`,
-    [state.episodeId, state.position, state.updatedAt]
+    [state.episodeId, state.position, state.isFinished ? 1 : 0, state.updatedAt]
   );
 }
 
@@ -227,4 +265,127 @@ export async function getWeeklyStats(
     });
   }
   return Array.from(dayMap.values());
+}
+
+type DownloadRow = {
+  episode_id: number;
+  local_uri: string;
+  file_size_bytes: number;
+  downloaded_at: number;
+};
+
+function toDownload(row: DownloadRow): Download {
+  return {
+    episodeId: row.episode_id,
+    localUri: row.local_uri,
+    fileSizeBytes: row.file_size_bytes,
+    downloadedAt: row.downloaded_at,
+  };
+}
+
+export async function getDownloadForEpisode(
+  db: SQLiteDatabase,
+  episodeId: number
+): Promise<Download | null> {
+  const row = await db.getFirstAsync<DownloadRow>('SELECT * FROM downloads WHERE episode_id = ?', [
+    episodeId,
+  ]);
+  return row ? toDownload(row) : null;
+}
+
+export async function insertDownload(
+  db: SQLiteDatabase,
+  download: Omit<Download, 'downloadedAt'> & { downloadedAt?: number }
+): Promise<void> {
+  await db.runAsync(
+    `INSERT INTO downloads (episode_id, local_uri, file_size_bytes, downloaded_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(episode_id) DO UPDATE SET
+       local_uri = excluded.local_uri,
+       file_size_bytes = excluded.file_size_bytes,
+       downloaded_at = excluded.downloaded_at`,
+    [
+      download.episodeId,
+      download.localUri,
+      download.fileSizeBytes,
+      download.downloadedAt ?? Math.floor(Date.now() / 1000),
+    ]
+  );
+}
+
+export async function deleteDownload(db: SQLiteDatabase, episodeId: number): Promise<void> {
+  await db.runAsync('DELETE FROM downloads WHERE episode_id = ?', [episodeId]);
+}
+
+export async function getDownloads(db: SQLiteDatabase): Promise<DownloadedEpisode[]> {
+  const rows = await db.getAllAsync<{
+    episode_id: number;
+    podcast_id: number;
+    guid: string;
+    podcast_title: string;
+    episode_title: string;
+    description: string;
+    artwork_url: string;
+    audio_url: string;
+    local_uri: string;
+    file_size_bytes: number;
+    downloaded_at: number;
+    duration_seconds: number;
+    published_at: number;
+    position: number;
+    is_finished: number;
+  }>(
+    `SELECT
+       d.episode_id, e.podcast_id, e.guid, p.title AS podcast_title, e.title AS episode_title,
+       e.description, COALESCE(e.artwork_url, p.artwork_url) AS artwork_url, e.audio_url, d.local_uri,
+       d.file_size_bytes, d.downloaded_at, e.duration_seconds, e.published_at,
+       COALESCE(ps.position, 0) AS position, COALESCE(ps.is_finished, 0) AS is_finished
+     FROM downloads d
+     JOIN episodes e ON e.id = d.episode_id
+     JOIN podcasts p ON p.id = e.podcast_id
+     LEFT JOIN playback_state ps ON ps.episode_id = d.episode_id
+     ORDER BY d.downloaded_at DESC`
+  );
+
+  return rows.map((row) => ({
+    episodeId: row.episode_id,
+    podcastId: row.podcast_id,
+    guid: row.guid,
+    podcastTitle: row.podcast_title,
+    episodeTitle: row.episode_title,
+    description: row.description,
+    artworkUrl: row.artwork_url,
+    audioUrl: row.audio_url,
+    localUri: row.local_uri,
+    fileSizeBytes: row.file_size_bytes,
+    downloadedAt: row.downloaded_at,
+    durationSeconds: row.duration_seconds,
+    publishedAt: row.published_at,
+    position: row.position,
+    isFinished: row.is_finished === 1,
+  }));
+}
+
+/** Deletes downloads for fully-listened episodes and returns the deleted rows (so the caller can also remove the local files). */
+export async function deleteAllListenedDownloads(db: SQLiteDatabase): Promise<Download[]> {
+  const rows = await db.getAllAsync<DownloadRow>(
+    `SELECT d.* FROM downloads d
+     JOIN playback_state ps ON ps.episode_id = d.episode_id
+     WHERE ps.is_finished = 1`
+  );
+  await db.runAsync(
+    `DELETE FROM downloads WHERE episode_id IN (
+       SELECT d.episode_id FROM downloads d
+       JOIN playback_state ps ON ps.episode_id = d.episode_id
+       WHERE ps.is_finished = 1
+     )`
+  );
+  return rows.map(toDownload);
+}
+
+/** Deletes all downloads and returns the deleted rows (so the caller can also remove the local files). */
+export async function deleteAllDownloads(db: SQLiteDatabase): Promise<Download[]> {
+  const rows = await db.getAllAsync<DownloadRow>('SELECT * FROM downloads');
+  await db.runAsync('DELETE FROM downloads');
+  return rows.map(toDownload);
 }

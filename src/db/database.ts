@@ -1,14 +1,33 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const currentVersion = result?.user_version ?? 0;
-  if (currentVersion >= DATABASE_VERSION) {
-    return;
+  if (currentVersion < DATABASE_VERSION) {
+    await runVersionedMigration(db);
   }
 
+  // Run unconditionally on every launch (not gated by the version check above) — defensive
+  // against a corrupted user_version state where these were never actually created (e.g. a
+  // partial migration having already bumped the version once without finishing).
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS downloads (
+      episode_id INTEGER PRIMARY KEY REFERENCES episodes(id) ON DELETE CASCADE,
+      local_uri TEXT NOT NULL,
+      file_size_bytes INTEGER NOT NULL,
+      downloaded_at INTEGER NOT NULL
+    );
+  `);
+  try {
+    await db.execAsync('ALTER TABLE playback_state ADD COLUMN is_finished INTEGER NOT NULL DEFAULT 0');
+  } catch {
+    // Column already exists — safe to ignore.
+  }
+}
+
+async function runVersionedMigration(db: SQLiteDatabase) {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
 

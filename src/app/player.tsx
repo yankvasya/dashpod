@@ -2,9 +2,10 @@ import Slider from '@react-native-community/slider';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LoadingRing } from '@/components/player/LoadingRing';
 import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -115,7 +116,7 @@ export default function PlayerScreen() {
             disabled={isLoading}
             style={[styles.playButton, { backgroundColor: theme.backgroundElement }]}>
             {isLoading ? (
-              <ActivityIndicator color={theme.text} />
+              <LoadingRing size={32} color={theme.accent} strokeWidth={3} />
             ) : (
               <PlayPauseIcon playing={status.playing} size={32} color={theme.text} />
             )}

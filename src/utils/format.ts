@@ -21,3 +21,16 @@ export function formatDate(unixSeconds: number): string {
     day: 'numeric',
   });
 }
+
+/** "Today" / "Yesterday" / "Mon, Jan 5" — for the "YYYY-MM-DD" strings DayStats.date uses. */
+export function formatHistoryDay(dateString: string): string {
+  const target = new Date(`${dateString}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (target.getTime() === today.getTime()) return 'Today';
+  if (target.getTime() === yesterday.getTime()) return 'Yesterday';
+  return target.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}

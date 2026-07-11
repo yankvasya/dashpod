@@ -114,6 +114,16 @@ export interface EpisodeListeningSummary {
   totalMinutes: number;
 }
 
+/** All-time listening summary for a single podcast. */
+export interface PodcastListeningStats {
+  podcastId: number;
+  podcastTitle: string;
+  artworkUrl: string;
+  totalMinutes: number;
+  finishedEpisodes: number;
+  totalEpisodes: number;
+}
+
 /** A single result row from the iTunes Search API. */
 export interface ITunesSearchResult {
   collectionId: number;

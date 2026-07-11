@@ -8,6 +8,7 @@ import type {
   ListeningEvent,
   PlaybackState,
   Podcast,
+  PodcastListeningStats,
   QueuedEpisode,
 } from '@/types/podcast';
 
@@ -299,6 +300,63 @@ export async function getListeningHistory(db: SQLiteDatabase): Promise<DayStats[
   );
 
   return mapDayStatsRows(rows);
+}
+
+/** All-time per-podcast listening summary, most-listened first. Same clamp-at-duration logic as
+ * mapDayStatsRows (per episode, not per day) to avoid overcounting from rewind/replay. */
+export async function getPodcastListeningStats(db: SQLiteDatabase): Promise<PodcastListeningStats[]> {
+  const episodeRows = await db.getAllAsync<{
+    podcast_id: number;
+    podcast_title: string;
+    artwork_url: string;
+    episode_id: number;
+    duration_seconds: number;
+    total_seconds: number;
+    is_finished: number;
+  }>(
+    `SELECT
+       p.id AS podcast_id,
+       p.title AS podcast_title,
+       p.artwork_url AS artwork_url,
+       e.id AS episode_id,
+       e.duration_seconds AS duration_seconds,
+       SUM(le.listened_seconds) AS total_seconds,
+       COALESCE(ps.is_finished, 0) AS is_finished
+     FROM listening_events le
+     JOIN episodes e ON e.id = le.episode_id
+     JOIN podcasts p ON p.id = e.podcast_id
+     LEFT JOIN playback_state ps ON ps.episode_id = e.id
+     GROUP BY e.id`
+  );
+
+  const episodeCountRows = await db.getAllAsync<{ podcast_id: number; total_episodes: number }>(
+    'SELECT podcast_id, COUNT(*) AS total_episodes FROM episodes GROUP BY podcast_id'
+  );
+  const totalEpisodesByPodcast = new Map(
+    episodeCountRows.map((row) => [row.podcast_id, row.total_episodes])
+  );
+
+  const statsMap = new Map<number, PodcastListeningStats>();
+  for (const row of episodeRows) {
+    let stats = statsMap.get(row.podcast_id);
+    if (!stats) {
+      stats = {
+        podcastId: row.podcast_id,
+        podcastTitle: row.podcast_title,
+        artworkUrl: row.artwork_url,
+        totalMinutes: 0,
+        finishedEpisodes: 0,
+        totalEpisodes: totalEpisodesByPodcast.get(row.podcast_id) ?? 0,
+      };
+      statsMap.set(row.podcast_id, stats);
+    }
+    const seconds =
+      row.duration_seconds > 0 ? Math.min(row.total_seconds, row.duration_seconds) : row.total_seconds;
+    stats.totalMinutes += seconds / 60;
+    if (row.is_finished === 1) stats.finishedEpisodes += 1;
+  }
+
+  return Array.from(statsMap.values()).sort((a, b) => b.totalMinutes - a.totalMinutes);
 }
 
 type DownloadRow = {

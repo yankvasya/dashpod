@@ -28,6 +28,9 @@ export default function AppTabs() {
           <TabTrigger name="downloads" href="/downloads" asChild>
             <TabButton>Downloads</TabButton>
           </TabTrigger>
+          <TabTrigger name="queue" href="/queue" asChild>
+            <TabButton>Queue</TabButton>
+          </TabTrigger>
         </CustomTabList>
       </TabList>
     </Tabs>

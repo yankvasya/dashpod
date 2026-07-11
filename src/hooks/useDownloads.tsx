@@ -12,13 +12,22 @@ import {
 import { deleteDownloadedFile, downloadEpisodeFile } from '@/services/downloads';
 import type { DownloadedEpisode, Episode } from '@/types/podcast';
 
+/** Live progress for a download in flight, keyed by episode id. */
+export interface DownloadProgress {
+  episodeTitle: string;
+  podcastTitle: string;
+  bytesWritten: number;
+  totalBytes: number;
+}
+
 interface DownloadsContextValue {
   downloads: DownloadedEpisode[];
   loading: boolean;
   downloadingEpisodeIds: Set<number>;
+  downloadProgress: Map<number, DownloadProgress>;
   isDownloaded: (episodeId: number) => boolean;
   getDownloadedUri: (episodeId: number) => string | null;
-  downloadEpisode: (episode: Episode) => Promise<void>;
+  downloadEpisode: (episode: Episode, podcastTitle: string) => Promise<void>;
   removeDownload: (episodeId: number) => Promise<void>;
   deleteAllListened: () => Promise<void>;
   deleteAll: () => Promise<void>;
@@ -33,6 +42,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   const [downloads, setDownloads] = useState<DownloadedEpisode[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingEpisodeIds, setDownloadingEpisodeIds] = useState<Set<number>>(new Set());
+  const [downloadProgress, setDownloadProgress] = useState<Map<number, DownloadProgress>>(new Map());
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -59,15 +69,35 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
   );
 
   const downloadEpisode = useCallback(
-    async (episode: Episode) => {
+    async (episode: Episode, podcastTitle: string) => {
       setDownloadingEpisodeIds((prev) => new Set(prev).add(episode.id));
+      setDownloadProgress((prev) => {
+        const next = new Map(prev);
+        next.set(episode.id, { episodeTitle: episode.title, podcastTitle, bytesWritten: 0, totalBytes: 0 });
+        return next;
+      });
       try {
-        const { localUri, fileSizeBytes } = await downloadEpisodeFile(episode.id, episode.audioUrl);
+        const { localUri, fileSizeBytes } = await downloadEpisodeFile(
+          episode.id,
+          episode.audioUrl,
+          (bytesWritten, totalBytes) => {
+            setDownloadProgress((prev) => {
+              const next = new Map(prev);
+              next.set(episode.id, { episodeTitle: episode.title, podcastTitle, bytesWritten, totalBytes });
+              return next;
+            });
+          }
+        );
         await insertDownload(db, { episodeId: episode.id, localUri, fileSizeBytes });
         await refresh();
       } finally {
         setDownloadingEpisodeIds((prev) => {
           const next = new Set(prev);
+          next.delete(episode.id);
+          return next;
+        });
+        setDownloadProgress((prev) => {
+          const next = new Map(prev);
           next.delete(episode.id);
           return next;
         });
@@ -103,6 +133,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       downloads,
       loading,
       downloadingEpisodeIds,
+      downloadProgress,
       isDownloaded,
       getDownloadedUri,
       downloadEpisode,
@@ -115,6 +146,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       downloads,
       loading,
       downloadingEpisodeIds,
+      downloadProgress,
       isDownloaded,
       getDownloadedUri,
       downloadEpisode,

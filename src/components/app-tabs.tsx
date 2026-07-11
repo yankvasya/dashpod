@@ -32,6 +32,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Label>Downloads</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="arrow.down.circle" drawable="stat_sys_download" />
       </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="queue">
+        <NativeTabs.Trigger.Label>Queue</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="list.bullet" drawable="queue_music" />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

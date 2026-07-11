@@ -1,12 +1,14 @@
 import Slider from '@react-native-community/slider';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LoadingRing } from '@/components/player/LoadingRing';
 import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
+import { formatSpeed, SpeedModal } from '@/components/player/SpeedModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -27,11 +29,13 @@ function formatTime(seconds: number): string {
 export default function PlayerScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { nowPlaying, status, episodeLoading, play, pause, seekTo } = usePlayer();
+  const { nowPlaying, status, episodeLoading, play, pause, seekTo, playbackRate, setRate, hasNext, skipToNext } =
+    usePlayer();
   const [seeking, setSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const [showRemaining, setShowRemaining] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [speedModalVisible, setSpeedModalVisible] = useState(false);
   const wasPlayingBeforeSeekRef = useRef(false);
 
   useEffect(() => {
@@ -111,18 +115,43 @@ export default function PlayerScreen() {
             </ThemedView>
           </View>
 
-          <Pressable
-            onPress={() => (status.playing ? pause() : play())}
-            disabled={isLoading}
-            style={[styles.playButton, { backgroundColor: theme.backgroundElement }]}>
-            {isLoading ? (
-              <LoadingRing size={32} color={theme.accent} strokeWidth={3} />
-            ) : (
-              <PlayPauseIcon playing={status.playing} size={32} color={theme.text} />
-            )}
-          </Pressable>
+          <ThemedView style={styles.controlsRow}>
+            <Pressable
+              onPress={() => setSpeedModalVisible(true)}
+              style={[styles.speedPill, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="smallBold" themeColor="text">
+                {formatSpeed(playbackRate)}
+              </ThemedText>
+            </Pressable>
+
+            <Pressable
+              onPress={() => (status.playing ? pause() : play())}
+              disabled={isLoading}
+              style={[styles.playButton, { backgroundColor: theme.backgroundElement }]}>
+              {isLoading ? (
+                <LoadingRing size={32} color={theme.accent} strokeWidth={3} />
+              ) : (
+                <PlayPauseIcon playing={status.playing} size={32} color={theme.text} />
+              )}
+            </Pressable>
+
+            <Pressable onPress={skipToNext} disabled={!hasNext} hitSlop={8} style={styles.nextButton}>
+              <SymbolView
+                tintColor={hasNext ? theme.text : theme.backgroundSelected}
+                name={{ ios: 'forward.end.fill', android: 'skip_next', web: 'skip_next' }}
+                size={26}
+              />
+            </Pressable>
+          </ThemedView>
         </ScrollView>
       </SafeAreaView>
+
+      <SpeedModal
+        visible={speedModalVisible}
+        rate={playbackRate}
+        onChange={setRate}
+        onClose={() => setSpeedModalVisible(false)}
+      />
     </ThemedView>
   );
 }
@@ -168,12 +197,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  playButton: {
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
     marginTop: Spacing.four,
+  },
+  speedPill: {
+    width: 56,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.four,
+    alignItems: 'center',
+  },
+  playButton: {
     width: 72,
     height: 72,
     borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  nextButton: {
+    width: 56,
+    alignItems: 'center',
   },
 });

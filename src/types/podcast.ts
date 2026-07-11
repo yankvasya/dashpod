@@ -49,6 +49,35 @@ export interface Download {
   downloadedAt: number;
 }
 
+/** A queue entry, ordering an episode to be played next. */
+export interface QueueItem {
+  id: number;
+  episodeId: number;
+  position: number;
+  addedAt: number;
+}
+
+/** A queued episode joined with its podcast/episode info, for the Queue list. */
+export interface QueuedEpisode {
+  queueItemId: number;
+  episodeId: number;
+  podcastId: number;
+  guid: string;
+  podcastTitle: string;
+  episodeTitle: string;
+  description: string;
+  artworkUrl: string;
+  audioUrl: string;
+  durationSeconds: number;
+  publishedAt: number;
+  /** Order within the queue (0 = up next). Not to be confused with playback position. */
+  position: number;
+  addedAt: number;
+  /** Saved playback position in seconds, if this episode has been started. */
+  playbackPosition: number;
+  isFinished: boolean;
+}
+
 /** A downloaded episode joined with its podcast/episode/playback info, for the Downloads list. */
 export interface DownloadedEpisode {
   episodeId: number;

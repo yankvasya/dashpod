@@ -7,13 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useDownloads } from '@/hooks/useDownloads';
 import { usePlayer } from '@/hooks/usePlayer';
+import { useQueue } from '@/hooks/useQueue';
 import { formatFileSize } from '@/services/downloads';
 import type { DownloadedEpisode } from '@/types/podcast';
-import { formatDate, formatDuration } from '@/utils/format';
+import { formatDate, formatDuration, formatProgress } from '@/utils/format';
 
 function toPlayableEpisode(item: DownloadedEpisode) {
   return {
@@ -33,6 +34,7 @@ export default function DownloadsScreen() {
   const theme = useTheme();
   const { downloads, removeDownload, deleteAllListened, deleteAll } = useDownloads();
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
+  const { isQueued, addEpisode, removeEpisode } = useQueue();
 
   async function handlePlayPause(item: DownloadedEpisode) {
     if (nowPlaying?.episode.id === item.episodeId) {
@@ -52,6 +54,14 @@ export default function DownloadsScreen() {
       loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl);
     }
     router.push('/player');
+  }
+
+  async function handleQueuePress(item: DownloadedEpisode) {
+    if (isQueued(item.episodeId)) {
+      await removeEpisode(item.episodeId);
+    } else {
+      await addEpisode(item.episodeId);
+    }
   }
 
   function handleDeletePress() {
@@ -94,7 +104,10 @@ export default function DownloadsScreen() {
         <FlatList
           data={downloads}
           keyExtractor={(item) => String(item.episodeId)}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            nowPlaying && { paddingBottom: BottomTabInset + Spacing.four + MiniPlayerHeight },
+          ]}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={styles.emptyText}>
               No downloads yet — download an episode to listen offline.
@@ -111,6 +124,13 @@ export default function DownloadsScreen() {
                 ? item.position / item.durationSeconds
                 : 0;
             const isLoading = isCurrent && (episodeLoading || status.isBuffering);
+            const queued = isCurrent || isQueued(item.episodeId);
+            const durationLabel =
+              isCurrent && status.duration > 0
+                ? formatProgress(status.currentTime, status.duration)
+                : item.position > 0 && !item.isFinished && item.durationSeconds > 0
+                  ? formatProgress(item.position, item.durationSeconds)
+                  : formatDuration(item.durationSeconds);
 
             return (
               <ThemedView style={[styles.row, item.isFinished && styles.rowFinished]}>
@@ -124,7 +144,7 @@ export default function DownloadsScreen() {
                     </ThemedText>
                     <ThemedText numberOfLines={2}>{item.episodeTitle}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {[formatDate(item.downloadedAt), formatFileSize(item.fileSizeBytes)]
+                      {[durationLabel, formatDate(item.downloadedAt), formatFileSize(item.fileSizeBytes)]
                         .filter(Boolean)
                         .join(' · ')}
                     </ThemedText>
@@ -137,6 +157,20 @@ export default function DownloadsScreen() {
                   <SymbolView
                     tintColor={theme.textSecondary}
                     name={{ ios: 'trash', android: 'delete', web: 'delete' }}
+                    size={18}
+                  />
+                </Pressable>
+                <Pressable
+                  onPress={() => handleQueuePress(item)}
+                  hitSlop={8}
+                  style={styles.queueButton}>
+                  <SymbolView
+                    tintColor={queued ? theme.accent : theme.textSecondary}
+                    name={
+                      queued
+                        ? { ios: 'text.badge.checkmark', android: 'playlist_add_check', web: 'playlist_add_check' }
+                        : { ios: 'text.badge.plus', android: 'playlist_add', web: 'playlist_add' }
+                    }
                     size={18}
                   />
                 </Pressable>
@@ -202,6 +236,9 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   deleteButton: {
+    padding: Spacing.one,
+  },
+  queueButton: {
     padding: Spacing.one,
   },
   separator: {

@@ -8,6 +8,7 @@ import type {
   ListeningEvent,
   PlaybackState,
   Podcast,
+  QueuedEpisode,
 } from '@/types/podcast';
 
 type PodcastRow = {
@@ -388,4 +389,84 @@ export async function deleteAllDownloads(db: SQLiteDatabase): Promise<Download[]
   const rows = await db.getAllAsync<DownloadRow>('SELECT * FROM downloads');
   await db.runAsync('DELETE FROM downloads');
   return rows.map(toDownload);
+}
+
+export async function getQueue(db: SQLiteDatabase): Promise<QueuedEpisode[]> {
+  const rows = await db.getAllAsync<{
+    queue_item_id: number;
+    episode_id: number;
+    podcast_id: number;
+    guid: string;
+    podcast_title: string;
+    episode_title: string;
+    description: string;
+    artwork_url: string;
+    audio_url: string;
+    duration_seconds: number;
+    published_at: number;
+    position: number;
+    added_at: number;
+    playback_position: number;
+    is_finished: number;
+  }>(
+    `SELECT
+       qi.id AS queue_item_id, qi.episode_id, e.podcast_id, e.guid, p.title AS podcast_title,
+       e.title AS episode_title, e.description, COALESCE(e.artwork_url, p.artwork_url) AS artwork_url,
+       e.audio_url, e.duration_seconds, e.published_at, qi.position, qi.added_at,
+       COALESCE(ps.position, 0) AS playback_position, COALESCE(ps.is_finished, 0) AS is_finished
+     FROM queue_items qi
+     JOIN episodes e ON e.id = qi.episode_id
+     JOIN podcasts p ON p.id = e.podcast_id
+     LEFT JOIN playback_state ps ON ps.episode_id = qi.episode_id
+     ORDER BY qi.position ASC`
+  );
+
+  return rows.map((row) => ({
+    queueItemId: row.queue_item_id,
+    episodeId: row.episode_id,
+    podcastId: row.podcast_id,
+    guid: row.guid,
+    podcastTitle: row.podcast_title,
+    episodeTitle: row.episode_title,
+    description: row.description,
+    artworkUrl: row.artwork_url,
+    audioUrl: row.audio_url,
+    durationSeconds: row.duration_seconds,
+    publishedAt: row.published_at,
+    position: row.position,
+    addedAt: row.added_at,
+    playbackPosition: row.playback_position,
+    isFinished: row.is_finished === 1,
+  }));
+}
+
+export async function addToQueue(db: SQLiteDatabase, episodeId: number): Promise<void> {
+  const row = await db.getFirstAsync<{ maxPosition: number | null }>(
+    'SELECT MAX(position) AS maxPosition FROM queue_items'
+  );
+  const nextPosition = (row?.maxPosition ?? -1) + 1;
+  await db.runAsync(
+    `INSERT INTO queue_items (episode_id, position, added_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(episode_id) DO NOTHING`,
+    [episodeId, nextPosition, Math.floor(Date.now() / 1000)]
+  );
+}
+
+export async function removeFromQueue(db: SQLiteDatabase, episodeId: number): Promise<void> {
+  await db.runAsync('DELETE FROM queue_items WHERE episode_id = ?', [episodeId]);
+}
+
+/** Rewrites every item's position to match its index in the given order.
+ * Not wrapped in withTransactionAsync: a fast second drag can fire before the first reorder's
+ * transaction commits, and expo-sqlite doesn't allow overlapping transactions on one connection
+ * ("cannot start a transaction within a transaction") — plain sequential runAsync calls queue
+ * safely instead. */
+export async function reorderQueue(db: SQLiteDatabase, episodeIdsInOrder: number[]): Promise<void> {
+  for (let index = 0; index < episodeIdsInOrder.length; index++) {
+    await db.runAsync('UPDATE queue_items SET position = ? WHERE episode_id = ?', [
+      index,
+      episodeIdsInOrder[index],
+    ]);
+  }
 }

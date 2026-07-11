@@ -19,6 +19,13 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       file_size_bytes INTEGER NOT NULL,
       downloaded_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS queue_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      episode_id INTEGER NOT NULL UNIQUE REFERENCES episodes(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL,
+      added_at INTEGER NOT NULL
+    );
   `);
   try {
     await db.execAsync('ALTER TABLE playback_state ADD COLUMN is_finished INTEGER NOT NULL DEFAULT 0');

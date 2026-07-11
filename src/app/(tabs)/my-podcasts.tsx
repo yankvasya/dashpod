@@ -1,64 +1,78 @@
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { FlatList, Pressable, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PodcastDetailView } from '@/components/PodcastDetailView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
-import type { Podcast } from '@/types/podcast';
 
 export default function MyPodcastsScreen() {
-  const router = useRouter();
   const theme = useTheme();
   const { subscriptions, unsubscribe } = useSubscriptions();
+  // `selectedFeedUrl` drives visibility; `mountedFeedUrl` stays set once a podcast has been
+  // opened so going back and re-opening the same one just toggles display instead of
+  // unmounting/remounting PodcastDetailView (which was re-fetching and re-flashing images
+  // every time — the "v-if vs v-show" difference).
+  const [selectedFeedUrl, setSelectedFeedUrl] = useState<string | null>(null);
+  const [mountedFeedUrl, setMountedFeedUrl] = useState<string | null>(null);
 
-  function openPodcastDetail(podcast: Podcast) {
-    router.push({ pathname: '/podcast/[feedUrl]', params: { feedUrl: podcast.feedUrl } });
+  function openPodcast(feedUrl: string) {
+    setMountedFeedUrl(feedUrl);
+    setSelectedFeedUrl(feedUrl);
   }
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ThemedText type="title" style={styles.title}>
-          My Podcasts
-        </ThemedText>
+        <View style={[styles.flexFill, selectedFeedUrl && styles.hidden]}>
+          <ThemedText type="title" style={styles.title}>
+            My Podcasts
+          </ThemedText>
 
-        <FlatList
-          data={subscriptions}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-              No subscriptions yet — search for a podcast to get started.
-            </ThemedText>
-          }
-          renderItem={({ item }) => (
-            <ThemedView style={styles.row}>
-              <Pressable
-                onPress={() => openPodcastDetail(item)}
-                style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}>
-                <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
-                <ThemedView style={styles.rowText}>
-                  <ThemedText numberOfLines={1}>{item.title}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                    {item.author}
-                  </ThemedText>
-                </ThemedView>
-              </Pressable>
-              <Pressable onPress={() => unsubscribe(item.id)} hitSlop={8} style={styles.unsubscribeButton}>
-                <SymbolView
-                  tintColor={theme.textSecondary}
-                  name={{ ios: 'trash', android: 'delete', web: 'delete' }}
-                  size={18}
-                />
-              </Pressable>
-            </ThemedView>
-          )}
-        />
+          <FlatList
+            data={subscriptions}
+            keyExtractor={(item) => String(item.id)}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <ThemedText themeColor="textSecondary" style={styles.emptyText}>
+                No subscriptions yet — search for a podcast to get started.
+              </ThemedText>
+            }
+            renderItem={({ item }) => (
+              <ThemedView style={styles.row}>
+                <Pressable
+                  onPress={() => openPodcast(item.feedUrl)}
+                  style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}>
+                  <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
+                  <ThemedView style={styles.rowText}>
+                    <ThemedText numberOfLines={1}>{item.title}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                      {item.author}
+                    </ThemedText>
+                  </ThemedView>
+                </Pressable>
+                <Pressable onPress={() => unsubscribe(item.id)} hitSlop={8} style={styles.unsubscribeButton}>
+                  <SymbolView
+                    tintColor={theme.textSecondary}
+                    name={{ ios: 'trash', android: 'delete', web: 'delete' }}
+                    size={18}
+                  />
+                </Pressable>
+              </ThemedView>
+            )}
+          />
+        </View>
+
+        {mountedFeedUrl && (
+          <View style={[styles.flexFill, styles.absoluteFill, !selectedFeedUrl && styles.hidden]}>
+            <PodcastDetailView feedUrl={mountedFeedUrl} onBack={() => setSelectedFeedUrl(null)} />
+          </View>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -70,6 +84,19 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  flexFill: {
+    flex: 1,
+  },
+  absoluteFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  hidden: {
+    display: 'none',
   },
   title: {
     fontSize: 32,

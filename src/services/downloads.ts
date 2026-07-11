@@ -15,10 +15,14 @@ function filenameForEpisode(episodeId: number, audioUrl: string): string {
 
 export async function downloadEpisodeFile(
   episodeId: number,
-  audioUrl: string
+  audioUrl: string,
+  onProgress?: (bytesWritten: number, totalBytes: number) => void
 ): Promise<{ localUri: string; fileSizeBytes: number }> {
   const destination = new File(getDownloadsDirectory(), filenameForEpisode(episodeId, audioUrl));
-  const file = await File.downloadFileAsync(audioUrl, destination, { idempotent: true });
+  const file = await File.downloadFileAsync(audioUrl, destination, {
+    idempotent: true,
+    onProgress: onProgress && (({ bytesWritten, totalBytes }) => onProgress(bytesWritten, totalBytes)),
+  });
   return { localUri: file.uri, fileSizeBytes: file.size };
 }
 

@@ -1,9 +1,9 @@
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PodcastDetailView } from '@/components/PodcastDetailView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
@@ -13,7 +13,6 @@ import { searchPodcasts } from '@/services/itunesSearch';
 import type { ITunesSearchResult } from '@/types/podcast';
 
 export default function HomeScreen() {
-  const router = useRouter();
   const theme = useTheme();
   const { subscriptions, subscribe, unsubscribe } = useSubscriptions();
 
@@ -28,14 +27,21 @@ export default function HomeScreen() {
   const [rssError, setRssError] = useState<string | null>(null);
 
   const [pendingFeedUrl, setPendingFeedUrl] = useState<string | null>(null);
+  // `selectedFeedUrl` drives visibility; `mountedFeedUrl` stays set once a podcast has been
+  // opened so going back and re-opening the same one just toggles display instead of
+  // unmounting/remounting PodcastDetailView (which was re-fetching and re-flashing images
+  // every time — the "v-if vs v-show" difference).
+  const [selectedFeedUrl, setSelectedFeedUrl] = useState<string | null>(null);
+  const [mountedFeedUrl, setMountedFeedUrl] = useState<string | null>(null);
 
   const subscribedFeedUrls = useMemo(
     () => new Set(subscriptions.map((podcast) => podcast.feedUrl)),
     [subscriptions]
   );
 
-  function openPodcastDetail(feedUrl: string) {
-    router.push({ pathname: '/podcast/[feedUrl]', params: { feedUrl } });
+  function openPodcast(feedUrl: string) {
+    setMountedFeedUrl(feedUrl);
+    setSelectedFeedUrl(feedUrl);
   }
 
   async function runSearch() {
@@ -77,7 +83,7 @@ export default function HomeScreen() {
       const feedUrl = rssUrl.trim();
       await subscribe(feedUrl);
       setRssUrl('');
-      openPodcastDetail(feedUrl);
+      openPodcast(feedUrl);
     } catch {
       setRssError('Could not load that feed. Check the URL.');
     } finally {
@@ -88,107 +94,115 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <FlatList
-          data={results}
-          keyExtractor={(item) => String(item.collectionId)}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.listContent}
-          ListHeaderComponent={
-            <ThemedView style={styles.headerSection}>
-              <ThemedText type="title" style={styles.title}>
-                Search
-              </ThemedText>
+        <View style={[styles.flexFill, selectedFeedUrl && styles.hidden]}>
+          <FlatList
+            data={results}
+            keyExtractor={(item) => String(item.collectionId)}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.listContent}
+            ListHeaderComponent={
+              <ThemedView style={styles.headerSection}>
+                <ThemedText type="title" style={styles.title}>
+                  Search
+                </ThemedText>
 
-              <ThemedView type="backgroundElement" style={styles.searchRow}>
-                <TextInput
-                  value={query}
-                  onChangeText={setQuery}
-                  onSubmitEditing={runSearch}
-                  placeholder="Search podcasts"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[styles.input, { color: theme.text }]}
-                  returnKeyType="search"
-                />
-                <Pressable onPress={runSearch} hitSlop={8}>
-                  {searching ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <ThemedText type="linkPrimary" themeColor="accent">
-                      Search
-                    </ThemedText>
-                  )}
-                </Pressable>
-              </ThemedView>
-
-              {searchError && <ThemedText themeColor="textSecondary">{searchError}</ThemedText>}
-            </ThemedView>
-          }
-          ListEmptyComponent={
-            hasSearched && !searching ? (
-              <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-                No podcasts found.
-              </ThemedText>
-            ) : null
-          }
-          renderItem={({ item }) => (
-            <ThemedView style={styles.resultRow}>
-              <Pressable
-                onPress={() => openPodcastDetail(item.feedUrl)}
-                style={({ pressed }) => [styles.resultMain, pressed && styles.pressed]}>
-                <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
-                <ThemedView style={styles.resultText}>
-                  <ThemedText numberOfLines={1}>{item.trackName}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                    {item.artistName}
-                  </ThemedText>
+                <ThemedView type="backgroundElement" style={styles.searchRow}>
+                  <TextInput
+                    value={query}
+                    onChangeText={setQuery}
+                    onSubmitEditing={runSearch}
+                    placeholder="Search podcasts"
+                    placeholderTextColor={theme.textSecondary}
+                    style={[styles.input, { color: theme.text }]}
+                    returnKeyType="search"
+                  />
+                  <Pressable onPress={runSearch} hitSlop={8}>
+                    {searching ? (
+                      <ActivityIndicator />
+                    ) : (
+                      <ThemedText type="linkPrimary" themeColor="accent">
+                        Search
+                      </ThemedText>
+                    )}
+                  </Pressable>
                 </ThemedView>
-              </Pressable>
-              <Pressable
-                onPress={() => toggleSubscription(item.feedUrl)}
-                disabled={pendingFeedUrl === item.feedUrl}
-                hitSlop={8}
-                style={styles.addButton}>
-                {pendingFeedUrl === item.feedUrl ? (
-                  <ActivityIndicator />
-                ) : (
-                  <ThemedText type="smallBold" themeColor="accent">
-                    {subscribedFeedUrls.has(item.feedUrl) ? 'Added' : 'Add'}
-                  </ThemedText>
-                )}
-              </Pressable>
-            </ThemedView>
-          )}
-          ListFooterComponent={
-            <ThemedView type="backgroundElement" style={styles.rssSection}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Or paste an RSS feed URL
-              </ThemedText>
-              <ThemedView style={styles.searchRow}>
-                <TextInput
-                  value={rssUrl}
-                  onChangeText={setRssUrl}
-                  onSubmitEditing={addByRssUrl}
-                  placeholder="https://example.com/feed.xml"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  style={[styles.input, { color: theme.text }]}
-                />
-                <Pressable onPress={addByRssUrl} hitSlop={8}>
-                  {addingRss ? (
+
+                {searchError && <ThemedText themeColor="textSecondary">{searchError}</ThemedText>}
+              </ThemedView>
+            }
+            ListEmptyComponent={
+              hasSearched && !searching ? (
+                <ThemedText themeColor="textSecondary" style={styles.emptyText}>
+                  No podcasts found.
+                </ThemedText>
+              ) : null
+            }
+            renderItem={({ item }) => (
+              <ThemedView style={styles.resultRow}>
+                <Pressable
+                  onPress={() => openPodcast(item.feedUrl)}
+                  style={({ pressed }) => [styles.resultMain, pressed && styles.pressed]}>
+                  <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
+                  <ThemedView style={styles.resultText}>
+                    <ThemedText numberOfLines={1}>{item.trackName}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                      {item.artistName}
+                    </ThemedText>
+                  </ThemedView>
+                </Pressable>
+                <Pressable
+                  onPress={() => toggleSubscription(item.feedUrl)}
+                  disabled={pendingFeedUrl === item.feedUrl}
+                  hitSlop={8}
+                  style={styles.addButton}>
+                  {pendingFeedUrl === item.feedUrl ? (
                     <ActivityIndicator />
                   ) : (
-                    <ThemedText type="linkPrimary" themeColor="accent">
-                      Add
+                    <ThemedText type="smallBold" themeColor="accent">
+                      {subscribedFeedUrls.has(item.feedUrl) ? 'Added' : 'Add'}
                     </ThemedText>
                   )}
                 </Pressable>
               </ThemedView>
-              {rssError && <ThemedText themeColor="textSecondary">{rssError}</ThemedText>}
-            </ThemedView>
-          }
-        />
+            )}
+            ListFooterComponent={
+              <ThemedView type="backgroundElement" style={styles.rssSection}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Or paste an RSS feed URL
+                </ThemedText>
+                <ThemedView style={styles.searchRow}>
+                  <TextInput
+                    value={rssUrl}
+                    onChangeText={setRssUrl}
+                    onSubmitEditing={addByRssUrl}
+                    placeholder="https://example.com/feed.xml"
+                    placeholderTextColor={theme.textSecondary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                    style={[styles.input, { color: theme.text }]}
+                  />
+                  <Pressable onPress={addByRssUrl} hitSlop={8}>
+                    {addingRss ? (
+                      <ActivityIndicator />
+                    ) : (
+                      <ThemedText type="linkPrimary" themeColor="accent">
+                        Add
+                      </ThemedText>
+                    )}
+                  </Pressable>
+                </ThemedView>
+                {rssError && <ThemedText themeColor="textSecondary">{rssError}</ThemedText>}
+              </ThemedView>
+            }
+          />
+        </View>
+
+        {mountedFeedUrl && (
+          <View style={[styles.flexFill, styles.absoluteFill, !selectedFeedUrl && styles.hidden]}>
+            <PodcastDetailView feedUrl={mountedFeedUrl} onBack={() => setSelectedFeedUrl(null)} />
+          </View>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -200,6 +214,19 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  flexFill: {
+    flex: 1,
+  },
+  absoluteFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  hidden: {
+    display: 'none',
   },
   listContent: {
     paddingHorizontal: Spacing.four,

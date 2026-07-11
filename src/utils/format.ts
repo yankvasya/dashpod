@@ -7,6 +7,13 @@ export function formatDuration(seconds: number): string {
   return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
 }
 
+/** "12/34 min" — position/duration in whole minutes, for rows with a partially-listened episode. */
+export function formatProgress(positionSeconds: number, durationSeconds: number): string {
+  const positionMinutes = Math.round(positionSeconds / 60);
+  const durationMinutes = Math.round(durationSeconds / 60);
+  return `${positionMinutes}/${durationMinutes} min`;
+}
+
 export function formatDate(unixSeconds: number): string {
   if (!unixSeconds) return '';
   return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {

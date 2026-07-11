@@ -66,4 +66,6 @@ export const Spacing = {
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 /** Native tab bar height only, excluding the safe-area bottom inset — combine with `useSafeAreaInsets().bottom` for absolute positioning above the tab bar. */
 export const BottomTabBarHeight = Platform.select({ ios: 49, android: 56 }) ?? 0;
+/** Mini player's own height plus its gap above the tab bar — add to a list's bottom padding whenever `usePlayer().nowPlaying` is set, so the last row isn't hidden underneath it. */
+export const MiniPlayerHeight = 64;
 export const MaxContentWidth = 800;

@@ -37,6 +37,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Label>Queue</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="list.bullet" drawable="queue_music" />
       </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="history">
+        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="clock" drawable="history" />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

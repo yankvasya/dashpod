@@ -219,35 +219,20 @@ export async function setPlaybackState(db: SQLiteDatabase, state: PlaybackState)
   );
 }
 
-export async function getWeeklyStats(
-  db: SQLiteDatabase,
-  weekStartUnixSeconds: number
-): Promise<DayStats[]> {
-  const weekEndUnixSeconds = weekStartUnixSeconds + 7 * 24 * 60 * 60;
-  const rows = await db.getAllAsync<{
-    date: string;
-    episode_id: number;
-    episode_title: string;
-    podcast_title: string;
-    artwork_url: string;
-    total_seconds: number;
-  }>(
-    `SELECT
-       date(le.started_at, 'unixepoch', 'localtime') AS date,
-       e.id AS episode_id,
-       e.title AS episode_title,
-       p.title AS podcast_title,
-       COALESCE(e.artwork_url, p.artwork_url) AS artwork_url,
-       SUM(le.listened_seconds) AS total_seconds
-     FROM listening_events le
-     JOIN episodes e ON e.id = le.episode_id
-     JOIN podcasts p ON p.id = e.podcast_id
-     WHERE le.started_at >= ? AND le.started_at < ?
-     GROUP BY date, e.id
-     ORDER BY date ASC`,
-    [weekStartUnixSeconds, weekEndUnixSeconds]
-  );
+type DayStatsRow = {
+  date: string;
+  episode_id: number;
+  episode_title: string;
+  podcast_title: string;
+  artwork_url: string;
+  total_seconds: number;
+  duration_seconds: number;
+};
 
+/** Groups raw per-episode-per-day rows into DayStats. Rewinding/replaying part of an episode
+ * records multiple overlapping listening_events segments, so a naive SUM can exceed the
+ * episode's real length — clamp each episode's per-day total at its own duration. */
+function mapDayStatsRows(rows: DayStatsRow[]): DayStats[] {
   const dayMap = new Map<string, DayStats>();
   for (const row of rows) {
     let day = dayMap.get(row.date);
@@ -255,7 +240,8 @@ export async function getWeeklyStats(
       day = { date: row.date, totalMinutes: 0, episodes: [] };
       dayMap.set(row.date, day);
     }
-    const minutes = row.total_seconds / 60;
+    const seconds = row.duration_seconds > 0 ? Math.min(row.total_seconds, row.duration_seconds) : row.total_seconds;
+    const minutes = seconds / 60;
     day.totalMinutes += minutes;
     day.episodes.push({
       episodeId: row.episode_id,
@@ -266,6 +252,53 @@ export async function getWeeklyStats(
     });
   }
   return Array.from(dayMap.values());
+}
+
+export async function getWeeklyStats(
+  db: SQLiteDatabase,
+  weekStartUnixSeconds: number
+): Promise<DayStats[]> {
+  const weekEndUnixSeconds = weekStartUnixSeconds + 7 * 24 * 60 * 60;
+  const rows = await db.getAllAsync<DayStatsRow>(
+    `SELECT
+       date(le.started_at, 'unixepoch', 'localtime') AS date,
+       e.id AS episode_id,
+       e.title AS episode_title,
+       p.title AS podcast_title,
+       COALESCE(e.artwork_url, p.artwork_url) AS artwork_url,
+       SUM(le.listened_seconds) AS total_seconds,
+       e.duration_seconds AS duration_seconds
+     FROM listening_events le
+     JOIN episodes e ON e.id = le.episode_id
+     JOIN podcasts p ON p.id = e.podcast_id
+     WHERE le.started_at >= ? AND le.started_at < ?
+     GROUP BY date, e.id
+     ORDER BY date ASC`,
+    [weekStartUnixSeconds, weekEndUnixSeconds]
+  );
+
+  return mapDayStatsRows(rows);
+}
+
+/** Full listening history, most recent day first — unlike getWeeklyStats, not bounded to one week. */
+export async function getListeningHistory(db: SQLiteDatabase): Promise<DayStats[]> {
+  const rows = await db.getAllAsync<DayStatsRow>(
+    `SELECT
+       date(le.started_at, 'unixepoch', 'localtime') AS date,
+       e.id AS episode_id,
+       e.title AS episode_title,
+       p.title AS podcast_title,
+       COALESCE(e.artwork_url, p.artwork_url) AS artwork_url,
+       SUM(le.listened_seconds) AS total_seconds,
+       e.duration_seconds AS duration_seconds
+     FROM listening_events le
+     JOIN episodes e ON e.id = le.episode_id
+     JOIN podcasts p ON p.id = e.podcast_id
+     GROUP BY date, e.id
+     ORDER BY date DESC`
+  );
+
+  return mapDayStatsRows(rows);
 }
 
 type DownloadRow = {

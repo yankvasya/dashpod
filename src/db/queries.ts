@@ -8,8 +8,10 @@ import type {
   ListeningEvent,
   PlaybackState,
   Podcast,
+  PodcastListeningStats,
   QueuedEpisode,
 } from '@/types/podcast';
+import type { DateRange } from '@/utils/periods';
 
 type PodcastRow = {
   id: number;
@@ -254,11 +256,9 @@ function mapDayStatsRows(rows: DayStatsRow[]): DayStats[] {
   return Array.from(dayMap.values());
 }
 
-export async function getWeeklyStats(
-  db: SQLiteDatabase,
-  weekStartUnixSeconds: number
-): Promise<DayStats[]> {
-  const weekEndUnixSeconds = weekStartUnixSeconds + 7 * 24 * 60 * 60;
+/** Full listening history, most recent day first. Pass a range to scope to a period; omit for
+ * all-time. */
+export async function getListeningHistory(db: SQLiteDatabase, range?: DateRange): Promise<DayStats[]> {
   const rows = await db.getAllAsync<DayStatsRow>(
     `SELECT
        date(le.started_at, 'unixepoch', 'localtime') AS date,
@@ -271,34 +271,96 @@ export async function getWeeklyStats(
      FROM listening_events le
      JOIN episodes e ON e.id = le.episode_id
      JOIN podcasts p ON p.id = e.podcast_id
-     WHERE le.started_at >= ? AND le.started_at < ?
+     ${range ? 'WHERE le.started_at >= ? AND le.started_at < ?' : ''}
      GROUP BY date, e.id
-     ORDER BY date ASC`,
-    [weekStartUnixSeconds, weekEndUnixSeconds]
+     ORDER BY date DESC`,
+    range ? [range.startUnixSeconds, range.endUnixSeconds] : []
   );
 
   return mapDayStatsRows(rows);
 }
 
-/** Full listening history, most recent day first — unlike getWeeklyStats, not bounded to one week. */
-export async function getListeningHistory(db: SQLiteDatabase): Promise<DayStats[]> {
-  const rows = await db.getAllAsync<DayStatsRow>(
+/** Per-podcast listening summary for a period, most-listened first. Pass a range to scope
+ * totalMinutes/episodeCount to that period; omit for all-time. finishedEpisodes/totalEpisodes are
+ * always all-time — completion is a lifetime concept, not something that resets per period. Same
+ * clamp-at-duration logic as mapDayStatsRows (per episode, not per day) to avoid overcounting from
+ * rewind/replay. */
+export async function getPodcastListeningStats(
+  db: SQLiteDatabase,
+  range?: DateRange
+): Promise<PodcastListeningStats[]> {
+  const episodeRows = await db.getAllAsync<{
+    podcast_id: number;
+    podcast_title: string;
+    artwork_url: string;
+    episode_id: number;
+    episode_title: string;
+    duration_seconds: number;
+    total_seconds: number;
+  }>(
     `SELECT
-       date(le.started_at, 'unixepoch', 'localtime') AS date,
+       p.id AS podcast_id,
+       p.title AS podcast_title,
+       p.artwork_url AS artwork_url,
        e.id AS episode_id,
        e.title AS episode_title,
-       p.title AS podcast_title,
-       COALESCE(e.artwork_url, p.artwork_url) AS artwork_url,
-       SUM(le.listened_seconds) AS total_seconds,
-       e.duration_seconds AS duration_seconds
+       e.duration_seconds AS duration_seconds,
+       SUM(le.listened_seconds) AS total_seconds
      FROM listening_events le
      JOIN episodes e ON e.id = le.episode_id
      JOIN podcasts p ON p.id = e.podcast_id
-     GROUP BY date, e.id
-     ORDER BY date DESC`
+     ${range ? 'WHERE le.started_at >= ? AND le.started_at < ?' : ''}
+     GROUP BY e.id`,
+    range ? [range.startUnixSeconds, range.endUnixSeconds] : []
   );
 
-  return mapDayStatsRows(rows);
+  const finishedCountRows = await db.getAllAsync<{ podcast_id: number; finished_count: number }>(
+    `SELECT e.podcast_id, COUNT(*) AS finished_count
+     FROM playback_state ps
+     JOIN episodes e ON e.id = ps.episode_id
+     WHERE ps.is_finished = 1
+     GROUP BY e.podcast_id`
+  );
+  const finishedByPodcast = new Map(finishedCountRows.map((row) => [row.podcast_id, row.finished_count]));
+
+  const episodeCountRows = await db.getAllAsync<{ podcast_id: number; total_episodes: number }>(
+    'SELECT podcast_id, COUNT(*) AS total_episodes FROM episodes GROUP BY podcast_id'
+  );
+  const totalEpisodesByPodcast = new Map(
+    episodeCountRows.map((row) => [row.podcast_id, row.total_episodes])
+  );
+
+  const statsMap = new Map<number, PodcastListeningStats>();
+  for (const row of episodeRows) {
+    let stats = statsMap.get(row.podcast_id);
+    if (!stats) {
+      stats = {
+        podcastId: row.podcast_id,
+        podcastTitle: row.podcast_title,
+        artworkUrl: row.artwork_url,
+        totalMinutes: 0,
+        episodeCount: 0,
+        finishedEpisodes: finishedByPodcast.get(row.podcast_id) ?? 0,
+        totalEpisodes: totalEpisodesByPodcast.get(row.podcast_id) ?? 0,
+        episodes: [],
+      };
+      statsMap.set(row.podcast_id, stats);
+    }
+    const seconds =
+      row.duration_seconds > 0 ? Math.min(row.total_seconds, row.duration_seconds) : row.total_seconds;
+    const minutes = seconds / 60;
+    stats.totalMinutes += minutes;
+    stats.episodeCount += 1;
+    stats.episodes.push({
+      episodeId: row.episode_id,
+      episodeTitle: row.episode_title,
+      podcastTitle: row.podcast_title,
+      artworkUrl: row.artwork_url,
+      totalMinutes: minutes,
+    });
+  }
+
+  return Array.from(statsMap.values()).sort((a, b) => b.totalMinutes - a.totalMinutes);
 }
 
 type DownloadRow = {

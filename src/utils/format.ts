@@ -7,6 +7,16 @@ export function formatDuration(seconds: number): string {
   return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
 }
 
+/** "51m" / "1h51m" / "2h" — same breakdown as formatDuration, no spaces, for tight spaces like calendar cells. */
+export function formatDurationCompact(seconds: number): string {
+  if (!seconds) return '';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes ? `${hours}h${remainingMinutes}m` : `${hours}h`;
+}
+
 /** "12/34 min" — position/duration in whole minutes, for rows with a partially-listened episode. */
 export function formatProgress(positionSeconds: number, durationSeconds: number): string {
   const positionMinutes = Math.round(positionSeconds / 60);

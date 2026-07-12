@@ -114,6 +114,23 @@ export interface EpisodeListeningSummary {
   totalMinutes: number;
 }
 
+/** Listening summary for a single podcast, optionally scoped to a period. */
+export interface PodcastListeningStats {
+  podcastId: number;
+  podcastTitle: string;
+  artworkUrl: string;
+  /** Minutes listened within the queried period (or all-time, if unscoped). */
+  totalMinutes: number;
+  /** Distinct episodes touched within the queried period (or all-time, if unscoped). */
+  episodeCount: number;
+  /** Always all-time — completion isn't scoped to a period. */
+  finishedEpisodes: number;
+  /** Always all-time. */
+  totalEpisodes: number;
+  /** Per-episode breakdown within the queried period (or all-time, if unscoped). */
+  episodes: EpisodeListeningSummary[];
+}
+
 /** A single result row from the iTunes Search API. */
 export interface ITunesSearchResult {
   collectionId: number;

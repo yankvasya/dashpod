@@ -16,6 +16,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePlayer } from '@/hooks/usePlayer';
 import { stripHtml } from '@/utils/format';
 
+const SKIP_SECONDS = 10;
+
 function formatTime(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
   const hrs = Math.floor(total / 3600);
@@ -51,6 +53,11 @@ export default function PlayerScreen() {
   const displayPosition = seeking ? seekValue : status.currentTime;
   const duration = status.duration || 0;
   const isLoading = episodeLoading || status.isBuffering;
+
+  function skipBy(deltaSeconds: number) {
+    const upperBound = duration > 0 ? duration : Infinity;
+    seekTo(Math.min(Math.max(status.currentTime + deltaSeconds, 0), upperBound));
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -125,6 +132,14 @@ export default function PlayerScreen() {
               </ThemedText>
             </Pressable>
 
+            <Pressable onPress={() => skipBy(-SKIP_SECONDS)} hitSlop={8} style={styles.skipButton}>
+              <SymbolView
+                tintColor={theme.text}
+                name={{ ios: 'gobackward.10', android: 'replay_10', web: 'replay_10' }}
+                size={26}
+              />
+            </Pressable>
+
             <Pressable
               onPress={() => (status.playing ? pause() : play())}
               disabled={isLoading}
@@ -134,6 +149,14 @@ export default function PlayerScreen() {
               ) : (
                 <PlayPauseIcon playing={status.playing} size={32} color={theme.text} />
               )}
+            </Pressable>
+
+            <Pressable onPress={() => skipBy(SKIP_SECONDS)} hitSlop={8} style={styles.skipButton}>
+              <SymbolView
+                tintColor={theme.text}
+                name={{ ios: 'goforward.10', android: 'forward_10', web: 'forward_10' }}
+                size={26}
+              />
             </Pressable>
 
             <Pressable onPress={skipToNext} disabled={!hasNext} hitSlop={8} style={styles.nextButton}>
@@ -209,6 +232,10 @@ const styles = StyleSheet.create({
     width: 56,
     paddingVertical: Spacing.two,
     borderRadius: Spacing.four,
+    alignItems: 'center',
+  },
+  skipButton: {
+    width: 40,
     alignItems: 'center',
   },
   playButton: {

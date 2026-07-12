@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LoadingRing } from '@/components/player/LoadingRing';
 import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
+import { formatSleepTimerRemaining, SleepTimerModal } from '@/components/player/SleepTimerModal';
 import { formatSpeed, SpeedModal } from '@/components/player/SpeedModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -32,13 +33,28 @@ function formatTime(seconds: number): string {
 export default function PlayerScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { nowPlaying, status, episodeLoading, play, pause, seekTo, playbackRate, setRate, hasNext, skipToNext } =
-    usePlayer();
+  const {
+    nowPlaying,
+    status,
+    episodeLoading,
+    play,
+    pause,
+    seekTo,
+    playbackRate,
+    setRate,
+    hasNext,
+    skipToNext,
+    sleepTimer,
+    setSleepTimerMinutes,
+    setSleepTimerEndOfEpisode,
+    cancelSleepTimer,
+  } = usePlayer();
   const [seeking, setSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const [showRemaining, setShowRemaining] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [speedModalVisible, setSpeedModalVisible] = useState(false);
+  const [sleepTimerModalVisible, setSleepTimerModalVisible] = useState(false);
   const wasPlayingBeforeSeekRef = useRef(false);
 
   useEffect(() => {
@@ -67,6 +83,26 @@ export default function PlayerScreen() {
             <ThemedText type="smallBold" themeColor="textSecondary">
               Close
             </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => setSleepTimerModalVisible(true)}
+            hitSlop={8}
+            style={styles.sleepTimerButton}>
+            <SymbolView
+              tintColor={sleepTimer.mode !== 'off' ? theme.accent : theme.textSecondary}
+              name={{ ios: 'moon.zzz', android: 'bedtime', web: 'bedtime' }}
+              size={18}
+            />
+            {sleepTimer.mode === 'duration' && sleepTimer.remainingSeconds != null && (
+              <ThemedText type="small" themeColor="accent">
+                {formatSleepTimerRemaining(sleepTimer.remainingSeconds)}
+              </ThemedText>
+            )}
+            {sleepTimer.mode === 'endOfEpisode' && (
+              <ThemedText type="small" themeColor="accent">
+                End
+              </ThemedText>
+            )}
           </Pressable>
           <Pressable onPress={() => setShowInfo((value) => !value)} hitSlop={8}>
             <ThemedText type="smallBold" themeColor="textSecondary">
@@ -176,6 +212,24 @@ export default function PlayerScreen() {
         onChange={setRate}
         onClose={() => setSpeedModalVisible(false)}
       />
+
+      <SleepTimerModal
+        visible={sleepTimerModalVisible}
+        mode={sleepTimer.mode}
+        onSelectMinutes={(minutes) => {
+          setSleepTimerMinutes(minutes);
+          setSleepTimerModalVisible(false);
+        }}
+        onSelectEndOfEpisode={() => {
+          setSleepTimerEndOfEpisode();
+          setSleepTimerModalVisible(false);
+        }}
+        onCancel={() => {
+          cancelSleepTimer();
+          setSleepTimerModalVisible(false);
+        }}
+        onClose={() => setSleepTimerModalVisible(false)}
+      />
     </ThemedView>
   );
 }
@@ -193,6 +247,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.four,
+  },
+  sleepTimerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
   },
   content: {
     flexGrow: 1,

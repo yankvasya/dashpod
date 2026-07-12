@@ -23,6 +23,14 @@ interface ListeningSegment {
   positionStart: number;
 }
 
+type SleepTimerMode = 'off' | 'duration' | 'endOfEpisode';
+
+interface SleepTimerState {
+  mode: SleepTimerMode;
+  /** Live-updating countdown, only meaningful when mode is 'duration'. */
+  remainingSeconds: number | null;
+}
+
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
 function toPlayableEpisode(item: QueuedEpisode): PlayableEpisode {
@@ -53,6 +61,10 @@ interface PlayerContextValue {
   setRate: (rate: number) => void;
   hasNext: boolean;
   skipToNext: () => void;
+  sleepTimer: SleepTimerState;
+  setSleepTimerMinutes: (minutes: number) => void;
+  setSleepTimerEndOfEpisode: () => void;
+  cancelSleepTimer: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -72,6 +84,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const nowPlayingRef = useRef<NowPlaying | null>(null);
   const rateRef = useRef(1);
   nowPlayingRef.current = nowPlaying;
+  // Sleep timer's setInterval outlives any single render — call through this ref rather than
+  // closing over `pause` directly, since `pause` itself closes over `status.currentTime` and is
+  // recreated on every status tick (a stale closure would flush/persist the wrong position).
+  const pauseRef = useRef<() => void>(() => {});
 
   const flushSegment = useCallback(
     async (endPosition: number) => {
@@ -148,6 +164,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     flushSegment(position);
     persistPosition(position);
   }, [flushSegment, persistPosition, player, status.currentTime]);
+  pauseRef.current = pause;
 
   const seekTo = useCallback(
     async (seconds: number) => {
@@ -186,6 +203,47 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     );
   }, [queue, nowPlaying, downloads, loadEpisode, play]);
 
+  const [sleepTimer, setSleepTimer] = useState<SleepTimerState>({ mode: 'off', remainingSeconds: null });
+  const sleepTimerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearSleepTimerInterval = useCallback(() => {
+    if (sleepTimerIntervalRef.current) {
+      clearInterval(sleepTimerIntervalRef.current);
+      sleepTimerIntervalRef.current = null;
+    }
+  }, []);
+
+  const cancelSleepTimer = useCallback(() => {
+    clearSleepTimerInterval();
+    setSleepTimer({ mode: 'off', remainingSeconds: null });
+  }, [clearSleepTimerInterval]);
+
+  const setSleepTimerMinutes = useCallback(
+    (minutes: number) => {
+      clearSleepTimerInterval();
+      const endsAt = Date.now() + minutes * 60_000;
+      setSleepTimer({ mode: 'duration', remainingSeconds: minutes * 60 });
+      sleepTimerIntervalRef.current = setInterval(() => {
+        const remaining = Math.round((endsAt - Date.now()) / 1000);
+        if (remaining <= 0) {
+          clearSleepTimerInterval();
+          pauseRef.current();
+          setSleepTimer({ mode: 'off', remainingSeconds: null });
+        } else {
+          setSleepTimer({ mode: 'duration', remainingSeconds: remaining });
+        }
+      }, 1000);
+    },
+    [clearSleepTimerInterval]
+  );
+
+  const setSleepTimerEndOfEpisode = useCallback(() => {
+    clearSleepTimerInterval();
+    setSleepTimer({ mode: 'endOfEpisode', remainingSeconds: null });
+  }, [clearSleepTimerInterval]);
+
+  useEffect(() => clearSleepTimerInterval, [clearSleepTimerInterval]);
+
   useEffect(() => {
     if (!status.didJustFinish || !nowPlaying) return;
     flushSegment(status.duration).then(() => persistPosition(0, true));
@@ -195,8 +253,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (nowPlaying.episode.id != null) {
       queue.removeEpisode(nowPlaying.episode.id);
     }
+    // A sleep timer set to "End of Episode" means stop here rather than auto-advancing.
+    if (sleepTimer.mode === 'endOfEpisode') {
+      cancelSleepTimer();
+      return;
+    }
     skipToNext();
-  }, [status.didJustFinish, status.duration, nowPlaying, flushSegment, persistPosition, queue, skipToNext]);
+  }, [
+    status.didJustFinish,
+    status.duration,
+    nowPlaying,
+    flushSegment,
+    persistPosition,
+    queue,
+    skipToNext,
+    sleepTimer.mode,
+    cancelSleepTimer,
+  ]);
 
   useEffect(() => {
     if (episodeLoadingRaw && status.isLoaded && !status.isBuffering) {
@@ -229,6 +302,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setRate,
       hasNext: queue.queue.length > 0,
       skipToNext,
+      sleepTimer,
+      setSleepTimerMinutes,
+      setSleepTimerEndOfEpisode,
+      cancelSleepTimer,
     }),
     [
       nowPlaying,
@@ -242,6 +319,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setRate,
       queue.queue.length,
       skipToNext,
+      sleepTimer,
+      setSleepTimerMinutes,
+      setSleepTimerEndOfEpisode,
+      cancelSleepTimer,
     ]
   );
 

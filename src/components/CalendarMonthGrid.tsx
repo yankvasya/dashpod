@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useHistory } from '@/hooks/useHistory';
 import { useTheme } from '@/hooks/use-theme';
+import { formatDuration, formatDurationCompact } from '@/utils/format';
+import { formatLocalDate, getPeriodRange } from '@/utils/periods';
 
 const WEEKDAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
@@ -40,6 +43,13 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
     }
   }, [visible, selectedDate]);
 
+  const monthRange = useMemo(() => getPeriodRange({ type: 'month', anchor: displayedMonth }) ?? undefined, [
+    displayedMonth,
+  ]);
+  const { days } = useHistory(monthRange);
+  const dailyTotals = useMemo(() => new Map(days.map((day) => [day.date, day.totalMinutes])), [days]);
+  const monthTotalMinutes = days.reduce((sum, day) => sum + day.totalMinutes, 0);
+
   const today = startOfDay(new Date());
   const daysInMonth = new Date(displayedMonth.getFullYear(), displayedMonth.getMonth() + 1, 0).getDate();
   const leadingBlanks = (displayedMonth.getDay() + 6) % 7; // Monday-start
@@ -63,6 +73,12 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
       <Pressable style={styles.scrim} onPress={onClose}>
         <Pressable onPress={() => {}}>
           <ThemedView style={styles.sheet}>
+            {monthTotalMinutes > 0 && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.monthTotal}>
+                {formatDuration(monthTotalMinutes * 60)} listened this month
+              </ThemedText>
+            )}
+
             <View style={styles.monthNav}>
               <Pressable
                 onPress={() =>
@@ -101,21 +117,29 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
                 const isToday = isSameDay(date, today);
                 const isSelected = isSameDay(date, selectedDate);
                 const isFuture = date.getTime() > today.getTime();
+                const totalMinutes = dailyTotals.get(formatLocalDate(date)) ?? 0;
+
                 return (
                   <Pressable
                     key={index}
                     onPress={() => !isFuture && handleSelect(date)}
                     disabled={isFuture}
-                    style={[
-                      styles.dayCell,
-                      isSelected && { backgroundColor: theme.accent },
-                      isToday && !isSelected && [styles.todayOutline, { borderColor: theme.accent }],
-                    ]}>
-                    <ThemedText
-                      type="small"
-                      themeColor={isSelected ? 'background' : isFuture ? 'textSecondary' : 'text'}
-                      style={isFuture && styles.dimmedText}>
-                      {date.getDate()}
+                    style={styles.dayCell}>
+                    <View
+                      style={[
+                        styles.dayNumberWrap,
+                        isSelected && { backgroundColor: theme.accent },
+                        isToday && !isSelected && { borderColor: theme.accent },
+                      ]}>
+                      <ThemedText
+                        type="small"
+                        themeColor={isSelected ? 'background' : isFuture ? 'textSecondary' : 'text'}
+                        style={isFuture && styles.dimmedText}>
+                        {date.getDate()}
+                      </ThemedText>
+                    </View>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.dayCaption}>
+                      {totalMinutes >= 1 ? formatDurationCompact(totalMinutes * 60) : ''}
                     </ThemedText>
                   </Pressable>
                 );
@@ -146,6 +170,9 @@ const styles = StyleSheet.create({
     padding: Spacing.five,
     gap: Spacing.three,
   },
+  monthTotal: {
+    textAlign: 'center',
+  },
   monthNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -165,16 +192,26 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: `${100 / 7}%`,
-    aspectRatio: 1,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 999,
+    gap: 2,
   },
-  todayOutline: {
+  dayNumberWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
+    borderColor: 'transparent',
   },
   dimmedText: {
     opacity: 0.4,
+  },
+  dayCaption: {
+    fontSize: 9,
+    lineHeight: 11,
   },
   doneButton: {
     alignItems: 'center',

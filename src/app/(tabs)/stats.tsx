@@ -42,14 +42,10 @@ export default function StatsScreen() {
   const { stats, loading } = usePodcastListeningStats(range);
 
   const totalMinutes = stats.reduce((sum, item) => sum + item.totalMinutes, 0);
-  const pieData = stats.map((item, index) => {
-    const percentage = totalMinutes > 0 ? Math.round((item.totalMinutes / totalMinutes) * 100) : 0;
-    return {
-      value: item.totalMinutes,
-      color: CHART_COLORS[index % CHART_COLORS.length],
-      text: `${percentage}%`,
-    };
-  });
+  const pieData = stats.map((item, index) => ({
+    value: item.totalMinutes,
+    color: CHART_COLORS[index % CHART_COLORS.length],
+  }));
 
   function toggleExpanded(podcastId: number) {
     setExpandedPodcastIds((prev) => {
@@ -66,17 +62,22 @@ export default function StatsScreen() {
   function renderPodcastRow({ item, index }: { item: PodcastListeningStats; index: number }) {
     const percentage = totalMinutes > 0 ? Math.round((item.totalMinutes / totalMinutes) * 100) : 0;
     const expanded = expandedPodcastIds.has(item.podcastId);
+    const listenedEpisodes = item.episodes.filter((episode) => episode.totalMinutes >= 1);
 
     return (
       <View>
         <Pressable style={styles.row} onPress={() => toggleExpanded(item.podcastId)}>
-          <View style={[styles.swatch, { backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }]} />
+          <View style={styles.swatchColumn}>
+            <View style={[styles.swatch, { backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }]} />
+            <ThemedText type="small" themeColor="textSecondary" style={styles.swatchPercent}>
+              {percentage}%
+            </ThemedText>
+          </View>
           <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
           <ThemedView style={styles.rowText}>
             <ThemedText numberOfLines={2}>{item.podcastTitle}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {[
-                `${percentage}%`,
                 formatDuration(item.totalMinutes * 60),
                 period.type === 'all'
                   ? `${item.finishedEpisodes}/${item.totalEpisodes} episodes`
@@ -93,8 +94,9 @@ export default function StatsScreen() {
 
         {expanded && (
           <View style={styles.episodeList}>
-            {item.episodes.map((episode) => (
+            {listenedEpisodes.map((episode) => (
               <View key={episode.episodeId} style={styles.episodeRow}>
+                <Image source={{ uri: episode.artworkUrl }} style={styles.episodeArtwork} />
                 <ThemedText numberOfLines={2} type="small" style={styles.episodeTitle}>
                   {episode.episodeTitle}
                 </ThemedText>
@@ -180,9 +182,6 @@ export default function StatsScreen() {
                   radius={90}
                   innerRadius={60}
                   innerCircleColor={theme.background}
-                  showText
-                  textColor={theme.text}
-                  textSize={12}
                   centerLabelComponent={() => (
                     <ThemedText type="smallBold" style={styles.chartCenterText}>
                       {formatDuration(totalMinutes * 60)}
@@ -273,10 +272,19 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingVertical: Spacing.three,
   },
+  swatchColumn: {
+    width: 28,
+    alignItems: 'center',
+    gap: Spacing.half,
+  },
   swatch: {
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  swatchPercent: {
+    fontSize: 11,
+    lineHeight: 13,
   },
   artwork: {
     width: 48,
@@ -288,15 +296,19 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   episodeList: {
-    paddingLeft: Spacing.four + 8 + Spacing.three + 48 + Spacing.three,
-    paddingBottom: Spacing.two,
-    gap: Spacing.two,
+    paddingLeft: Spacing.four + 28 + Spacing.three + 48 + Spacing.three,
+    paddingBottom: Spacing.three,
+    gap: Spacing.three,
   },
   episodeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: Spacing.two,
+  },
+  episodeArtwork: {
+    width: 32,
+    height: 32,
+    borderRadius: Spacing.one,
   },
   episodeTitle: {
     flex: 1,

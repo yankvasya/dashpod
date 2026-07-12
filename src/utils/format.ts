@@ -32,6 +32,36 @@ export function formatDate(unixSeconds: number): string {
   });
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+};
+
+/** Feed descriptions are often HTML — strip tags and decode entities down to plain text
+ * for display in places that just render a text block (no rich-text support here). */
+export function stripHtml(html: string): string {
+  if (!html) return '';
+  const withBreaks = html
+    .replace(/<\s*(br|\/p|\/div|\/li)\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '');
+  const decoded = withBreaks.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (match, entity: string) => {
+    if (entity[0] === '#') {
+      const isHex = entity[1]?.toLowerCase() === 'x';
+      const code = parseInt(entity.slice(isHex ? 2 : 1), isHex ? 16 : 10);
+      return Number.isNaN(code) ? match : String.fromCodePoint(code);
+    }
+    return HTML_ENTITIES[entity.toLowerCase()] ?? match;
+  });
+  return decoded
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n+/g, '\n\n')
+    .trim();
+}
+
 /** "Today" / "Yesterday" / "Mon, Jan 5" — for the "YYYY-MM-DD" strings DayStats.date uses. */
 export function formatHistoryDay(dateString: string): string {
   const target = new Date(`${dateString}T00:00:00`);

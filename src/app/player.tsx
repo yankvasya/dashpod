@@ -14,6 +14,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayer } from '@/hooks/usePlayer';
+import { stripHtml } from '@/utils/format';
 
 function formatTime(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -76,9 +77,9 @@ export default function PlayerScreen() {
             {nowPlaying.podcastTitle}
           </ThemedText>
 
-          {showInfo && nowPlaying.episode.description ? (
+          {showInfo && stripHtml(nowPlaying.episode.description) ? (
             <ThemedText type="small" themeColor="textSecondary" style={styles.description}>
-              {nowPlaying.episode.description}
+              {stripHtml(nowPlaying.episode.description)}
             </ThemedText>
           ) : null}
 

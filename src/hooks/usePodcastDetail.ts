@@ -1,5 +1,5 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getEpisodesForPodcast, getPlaybackStatesForPodcast, upsertEpisodes } from '@/db/queries';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
@@ -20,8 +20,15 @@ export function usePodcastDetail(feedUrl: string) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
+  // Guards against overlapping load()/refresh() calls landing out of order — e.g. subscribing
+  // triggers its own feed fetch and flips `existing` from null to set, which recreates `load`
+  // and re-fires the effect below; if the *original* preview-mode fetch (from before subscribing)
+  // resolves afterward, it would otherwise overwrite the correct DB-loaded episodes with a stale
+  // result. Only the most recently started request is allowed to commit its results.
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
       if (existing) {
@@ -30,16 +37,18 @@ export function usePodcastDetail(feedUrl: string) {
           getEpisodesForPodcast(db, existing.id),
           getPlaybackStatesForPodcast(db, existing.id),
         ]);
+        if (requestIdRef.current !== requestId) return;
         setEpisodes(loadedEpisodes);
         setPlaybackStates(loadedPlaybackStates);
       } else {
         const feed = await fetchPodcastFeed(feedUrl);
+        if (requestIdRef.current !== requestId) return;
         setPodcast(feed.podcast);
         setEpisodes(feed.episodes);
         setPlaybackStates(new Map());
       }
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === requestId) setLoading(false);
     }
   }, [db, existing, feedUrl]);
 
@@ -48,6 +57,7 @@ export function usePodcastDetail(feedUrl: string) {
   }, [load]);
 
   const refresh = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setRefreshing(true);
     try {
       if (existing) {
@@ -57,13 +67,14 @@ export function usePodcastDetail(feedUrl: string) {
           getEpisodesForPodcast(db, existing.id),
           getPlaybackStatesForPodcast(db, existing.id),
         ]);
+        if (requestIdRef.current !== requestId) return;
         setEpisodes(loadedEpisodes);
         setPlaybackStates(loadedPlaybackStates);
       } else {
         await load();
       }
     } finally {
-      setRefreshing(false);
+      if (requestIdRef.current === requestId) setRefreshing(false);
     }
   }, [db, existing, feedUrl, load]);
 

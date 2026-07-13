@@ -1,3 +1,4 @@
+import { SymbolView } from 'expo-symbols';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -41,41 +42,42 @@ export function SleepTimerModal({
               Sleep Timer
             </ThemedText>
 
-            <View style={styles.presetsRow}>
+            <View style={styles.grid}>
               {PRESET_MINUTES.map((minutes) => (
                 <Pressable
                   key={minutes}
                   onPress={() => onSelectMinutes(minutes)}
-                  style={[styles.presetButton, { backgroundColor: theme.backgroundElement }]}>
+                  style={[styles.gridButton, { backgroundColor: theme.backgroundElement }]}>
                   <ThemedText type="smallBold">{minutes} min</ThemedText>
                 </Pressable>
               ))}
+              <Pressable
+                onPress={onSelectEndOfEpisode}
+                style={[
+                  styles.gridButton,
+                  { backgroundColor: mode === 'endOfEpisode' ? theme.accent : theme.backgroundElement },
+                ]}>
+                <ThemedText
+                  type="smallBold"
+                  themeColor={mode === 'endOfEpisode' ? 'background' : 'text'}
+                  style={styles.centerText}>
+                  End of Episode
+                </ThemedText>
+              </Pressable>
             </View>
 
-            <Pressable
-              onPress={onSelectEndOfEpisode}
-              style={[
-                styles.optionRow,
-                { backgroundColor: mode === 'endOfEpisode' ? theme.accent : theme.backgroundElement },
-              ]}>
-              <ThemedText type="smallBold" themeColor={mode === 'endOfEpisode' ? 'background' : 'text'}>
-                End of Episode
-              </ThemedText>
-            </Pressable>
-
             {mode !== 'off' && (
-              <Pressable onPress={onCancel} style={styles.optionRow}>
-                <ThemedText type="smallBold" themeColor="accent">
-                  Turn Off Sleep Timer
+              <Pressable onPress={onCancel} style={styles.deleteButton}>
+                <SymbolView
+                  tintColor={theme.danger}
+                  name={{ ios: 'trash', android: 'delete', web: 'delete' }}
+                  size={16}
+                />
+                <ThemedText type="smallBold" themeColor="danger">
+                  Delete Sleep Timer
                 </ThemedText>
               </Pressable>
             )}
-
-            <Pressable onPress={onClose} style={styles.doneButton}>
-              <ThemedText type="smallBold" themeColor="accent">
-                Done
-              </ThemedText>
-            </Pressable>
           </ThemedView>
         </Pressable>
       </Pressable>
@@ -87,7 +89,6 @@ const styles = StyleSheet.create({
   scrim: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {
     borderTopLeftRadius: Spacing.five,
@@ -98,24 +99,23 @@ const styles = StyleSheet.create({
   centerText: {
     textAlign: 'center',
   },
-  presetsRow: {
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
     gap: Spacing.two,
   },
-  presetButton: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.four,
-  },
-  optionRow: {
-    alignItems: 'center',
+  gridButton: {
+    width: '31.5%',
     paddingVertical: Spacing.three,
     borderRadius: Spacing.three,
-  },
-  doneButton: {
     alignItems: 'center',
-    paddingVertical: Spacing.two,
+    justifyContent: 'center',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
   },
 });

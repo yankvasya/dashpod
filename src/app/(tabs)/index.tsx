@@ -286,7 +286,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.five,
   },
   rssSection: {
-    marginTop: Spacing.four,
     gap: Spacing.two,
     borderRadius: Spacing.three,
     padding: Spacing.three,

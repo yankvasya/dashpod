@@ -61,10 +61,15 @@ interface PlayerContextValue {
   setRate: (rate: number) => void;
   hasNext: boolean;
   skipToNext: () => void;
+  hasPrevious: boolean;
+  /** Restarts the current episode if more than 10s in; otherwise loads the last-played episode. */
+  skipToPrevious: () => void;
   sleepTimer: SleepTimerState;
   setSleepTimerMinutes: (minutes: number) => void;
   setSleepTimerEndOfEpisode: () => void;
   cancelSleepTimer: () => void;
+  /** True while the sleep timer's volume ramp-down is in progress (fires just before it pauses). */
+  isFadingOut: boolean;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -80,14 +85,62 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [episodeLoadingRaw, setEpisodeLoadingRaw] = useState(false);
   const [episodeLoading, setEpisodeLoading] = useState(false);
   const [playbackRate, setPlaybackRateState] = useState(1);
+  const [hasPrevious, setHasPrevious] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
   const segmentRef = useRef<ListeningSegment | null>(null);
   const nowPlayingRef = useRef<NowPlaying | null>(null);
+  const queueRef = useRef(queue);
   const rateRef = useRef(1);
+  // Single-slot "back" — the episode that was playing immediately before the current one, so the
+  // previous button can return to it. Not a full history stack: pressing it again toggles back to
+  // whatever was playing before *that*, which is deliberately simple rather than deep undo.
+  const previousEpisodeRef = useRef<NowPlaying | null>(null);
   nowPlayingRef.current = nowPlaying;
+  queueRef.current = queue;
   // Sleep timer's setInterval outlives any single render — call through this ref rather than
   // closing over `pause` directly, since `pause` itself closes over `status.currentTime` and is
   // recreated on every status tick (a stale closure would flush/persist the wrong position).
   const pauseRef = useRef<() => void>(() => {});
+  // The didJustFinish effect below calls skipToNext, whose identity depends on `queue` — reading
+  // it through a ref (rather than listing skipToNext/queue as effect dependencies) keeps the
+  // effect from re-triggering itself every time it calls queue.removeEpisode further down.
+  const skipToNextRef = useRef<() => void>(() => {});
+  const fadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Guards the didJustFinish effect below against running its body more than once per actual
+  // finish event — the effect's dependencies (nowPlaying, sleepTimer.mode) can themselves change
+  // as a *result* of running the body once, which would otherwise re-trigger it while
+  // status.didJustFinish is still (or again) true.
+  const handledFinishRef = useRef(false);
+
+  // Ramps volume down to 0 over `fadeMs`, then pauses and restores volume to full — used when the
+  // sleep timer fires, so playback doesn't cut out abruptly while someone's falling asleep.
+  const fadeOutAndPause = useCallback(
+    (fadeMs = 5000) => {
+      if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+      setIsFadingOut(true);
+      const steps = 20;
+      const stepMs = fadeMs / steps;
+      let step = 0;
+      fadeIntervalRef.current = setInterval(() => {
+        step += 1;
+        player.volume = Math.max(0, 1 - step / steps);
+        if (step >= steps) {
+          if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+          pauseRef.current();
+          player.volume = 1;
+          setIsFadingOut(false);
+        }
+      }, stepMs);
+    },
+    [player]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+    };
+  }, []);
 
   const flushSegment = useCallback(
     async (endPosition: number) => {
@@ -125,11 +178,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const loadEpisode = useCallback(
     async (episode: PlayableEpisode, podcastTitle: string, podcastArtworkUrl: string) => {
+      // Whatever was playing becomes "previous" — captured before it's replaced below.
+      if (nowPlayingRef.current) {
+        previousEpisodeRef.current = nowPlayingRef.current;
+        setHasPrevious(true);
+      }
       // Flush the outgoing episode's segment in the background — don't block the UI switching
       // to the new episode on a DB write for the old one.
       flushSegment(status.currentTime);
       setEpisodeLoadingRaw(true);
       loadEpisodeIntoPlayer(episode, podcastTitle, podcastArtworkUrl);
+      if (fadeIntervalRef.current) {
+        clearInterval(fadeIntervalRef.current);
+        fadeIntervalRef.current = null;
+        setIsFadingOut(false);
+      }
+      player.volume = 1;
       if (rateRef.current !== 1) {
         // Defensive: replace() may or may not reset the native rate to default, undocumented
         // either way — cheap to just re-apply the selected rate on every load.
@@ -195,13 +259,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // already listening to, it shouldn't be treated as "next" until something else is playing.
     const next = queue.queue.find((item) => item.episodeId !== nowPlaying?.episode.id);
     if (!next) return;
-    queue.removeEpisode(next.episodeId);
+    queue.markPlayed(next.episodeId);
     const localUri = downloads.getDownloadedUri(next.episodeId);
     const episode = toPlayableEpisode(next);
     loadEpisode(localUri ? { ...episode, audioUrl: localUri } : episode, next.podcastTitle, next.artworkUrl).then(
       () => play()
     );
   }, [queue, nowPlaying, downloads, loadEpisode, play]);
+  skipToNextRef.current = skipToNext;
+
+  const skipToPrevious = useCallback(() => {
+    if (status.currentTime >= 10) {
+      seekTo(0);
+      return;
+    }
+    const previous = previousEpisodeRef.current;
+    if (!previous) {
+      seekTo(0);
+      return;
+    }
+    loadEpisode(previous.episode, previous.podcastTitle, previous.podcastArtworkUrl).then(() => play());
+  }, [status.currentTime, seekTo, loadEpisode, play]);
 
   const [sleepTimer, setSleepTimer] = useState<SleepTimerState>({ mode: 'off', remainingSeconds: null });
   const sleepTimerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -227,14 +305,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const remaining = Math.round((endsAt - Date.now()) / 1000);
         if (remaining <= 0) {
           clearSleepTimerInterval();
-          pauseRef.current();
+          fadeOutAndPause();
           setSleepTimer({ mode: 'off', remainingSeconds: null });
         } else {
           setSleepTimer({ mode: 'duration', remainingSeconds: remaining });
         }
       }, 1000);
     },
-    [clearSleepTimerInterval]
+    [clearSleepTimerInterval, fadeOutAndPause]
   );
 
   const setSleepTimerEndOfEpisode = useCallback(() => {
@@ -245,30 +323,38 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => clearSleepTimerInterval, [clearSleepTimerInterval]);
 
   useEffect(() => {
-    if (!status.didJustFinish || !nowPlaying) return;
+    if (!status.didJustFinish) {
+      // Reset once the native "finished" flag clears, so the next real finish can be handled.
+      handledFinishRef.current = false;
+      return;
+    }
+    if (handledFinishRef.current || !nowPlaying) return;
+    handledFinishRef.current = true;
+
     flushSegment(status.duration).then(() => persistPosition(0, true));
     // Clean up: if the episode that just finished was itself queued (e.g. the user queued the
     // episode they were already playing), drop it now rather than leaving it to resurface and
-    // replay once it reaches the front of the queue later.
+    // replay once it reaches the front of the queue later. Read through a ref rather than
+    // depending on `queue` directly, since markPlayed changes the queue context's identity.
     if (nowPlaying.episode.id != null) {
-      queue.removeEpisode(nowPlaying.episode.id);
+      queueRef.current.markPlayed(nowPlaying.episode.id);
     }
     // A sleep timer set to "End of Episode" means stop here rather than auto-advancing.
     if (sleepTimer.mode === 'endOfEpisode') {
+      fadeOutAndPause();
       cancelSleepTimer();
       return;
     }
-    skipToNext();
+    skipToNextRef.current();
   }, [
     status.didJustFinish,
     status.duration,
     nowPlaying,
     flushSegment,
     persistPosition,
-    queue,
-    skipToNext,
     sleepTimer.mode,
     cancelSleepTimer,
+    fadeOutAndPause,
   ]);
 
   useEffect(() => {
@@ -302,10 +388,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setRate,
       hasNext: queue.queue.length > 0,
       skipToNext,
+      hasPrevious,
+      skipToPrevious,
       sleepTimer,
       setSleepTimerMinutes,
       setSleepTimerEndOfEpisode,
       cancelSleepTimer,
+      isFadingOut,
     }),
     [
       nowPlaying,
@@ -319,9 +408,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setRate,
       queue.queue.length,
       skipToNext,
+      hasPrevious,
+      skipToPrevious,
       sleepTimer,
       setSleepTimerMinutes,
       setSleepTimerEndOfEpisode,
+      isFadingOut,
       cancelSleepTimer,
     ]
   );

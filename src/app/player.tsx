@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LoadingRing } from '@/components/player/LoadingRing';
@@ -44,10 +44,12 @@ export default function PlayerScreen() {
     setRate,
     hasNext,
     skipToNext,
+    skipToPrevious,
     sleepTimer,
     setSleepTimerMinutes,
     setSleepTimerEndOfEpisode,
     cancelSleepTimer,
+    isFadingOut,
   } = usePlayer();
   const [seeking, setSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
@@ -56,12 +58,28 @@ export default function PlayerScreen() {
   const [speedModalVisible, setSpeedModalVisible] = useState(false);
   const [sleepTimerModalVisible, setSleepTimerModalVisible] = useState(false);
   const wasPlayingBeforeSeekRef = useRef(false);
+  const fadePulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (!nowPlaying) {
       router.back();
     }
   }, [nowPlaying, router]);
+
+  useEffect(() => {
+    if (!isFadingOut) {
+      fadePulseAnim.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(fadePulseAnim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
+        Animated.timing(fadePulseAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isFadingOut, fadePulseAnim]);
 
   if (!nowPlaying) return null;
 
@@ -83,26 +101,6 @@ export default function PlayerScreen() {
             <ThemedText type="smallBold" themeColor="textSecondary">
               Close
             </ThemedText>
-          </Pressable>
-          <Pressable
-            onPress={() => setSleepTimerModalVisible(true)}
-            hitSlop={8}
-            style={styles.sleepTimerButton}>
-            <SymbolView
-              tintColor={sleepTimer.mode !== 'off' ? theme.accent : theme.textSecondary}
-              name={{ ios: 'moon.zzz', android: 'bedtime', web: 'bedtime' }}
-              size={18}
-            />
-            {sleepTimer.mode === 'duration' && sleepTimer.remainingSeconds != null && (
-              <ThemedText type="small" themeColor="accent">
-                {formatSleepTimerRemaining(sleepTimer.remainingSeconds)}
-              </ThemedText>
-            )}
-            {sleepTimer.mode === 'endOfEpisode' && (
-              <ThemedText type="small" themeColor="accent">
-                End
-              </ThemedText>
-            )}
           </Pressable>
           <Pressable onPress={() => setShowInfo((value) => !value)} hitSlop={8}>
             <ThemedText type="smallBold" themeColor="textSecondary">
@@ -159,13 +157,56 @@ export default function PlayerScreen() {
             </ThemedView>
           </View>
 
-          <ThemedView style={styles.controlsRow}>
+          <ThemedView style={styles.settingsRow}>
             <Pressable
               onPress={() => setSpeedModalVisible(true)}
               style={[styles.speedPill, { backgroundColor: theme.backgroundElement }]}>
               <ThemedText type="smallBold" themeColor="text">
                 {formatSpeed(playbackRate)}
               </ThemedText>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setSleepTimerModalVisible(true)}
+              style={[
+                styles.sleepTimerButton,
+                { backgroundColor: sleepTimer.mode !== 'off' || isFadingOut ? theme.accent : theme.backgroundElement },
+              ]}>
+              <Animated.View style={[styles.sleepTimerContent, { opacity: fadePulseAnim }]}>
+                <SymbolView
+                  tintColor={sleepTimer.mode !== 'off' || isFadingOut ? theme.background : theme.text}
+                  name={{ ios: 'moon.zzz', android: 'bedtime', web: 'bedtime' }}
+                  size={16}
+                />
+                {isFadingOut ? (
+                  <ThemedText type="smallBold" themeColor="background">
+                    Fading…
+                  </ThemedText>
+                ) : (
+                  <>
+                    {sleepTimer.mode === 'duration' && sleepTimer.remainingSeconds != null && (
+                      <ThemedText type="smallBold" themeColor="background">
+                        {formatSleepTimerRemaining(sleepTimer.remainingSeconds)}
+                      </ThemedText>
+                    )}
+                    {sleepTimer.mode === 'endOfEpisode' && (
+                      <ThemedText type="smallBold" themeColor="background">
+                        End
+                      </ThemedText>
+                    )}
+                  </>
+                )}
+              </Animated.View>
+            </Pressable>
+          </ThemedView>
+
+          <ThemedView style={styles.controlsRow}>
+            <Pressable onPress={skipToPrevious} hitSlop={8} style={styles.nextButton}>
+              <SymbolView
+                tintColor={theme.text}
+                name={{ ios: 'backward.end.fill', android: 'skip_previous', web: 'skip_previous' }}
+                size={26}
+              />
             </Pressable>
 
             <Pressable onPress={() => skipBy(-SKIP_SECONDS)} hitSlop={8} style={styles.skipButton}>
@@ -248,23 +289,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.four,
   },
-  sleepTimerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.half,
-  },
   content: {
     flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: Spacing.five,
-    paddingBottom: Spacing.six,
-    gap: Spacing.three,
+    paddingBottom: Spacing.four,
+    gap: Spacing.two,
   },
   artwork: {
-    width: 280,
-    height: 280,
+    width: 240,
+    height: 240,
     borderRadius: Spacing.four,
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.two,
   },
   centerText: {
     textAlign: 'center',
@@ -274,13 +310,13 @@ const styles = StyleSheet.create({
   },
   sliderSection: {
     width: '100%',
-    marginTop: Spacing.five,
+    marginTop: Spacing.four,
   },
   timeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  controlsRow: {
+  settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -292,6 +328,23 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     borderRadius: Spacing.four,
     alignItems: 'center',
+  },
+  sleepTimerButton: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.four,
+  },
+  sleepTimerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: Spacing.four,
   },
   skipButton: {
     width: 40,

@@ -1,14 +1,9 @@
-/**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
- */
-
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useSettings } from '@/hooks/useSettings';
 
+/** Reads the user's chosen theme (Settings screen) rather than following the OS color scheme —
+ * the app defaults to light regardless of system dark mode, only changing on explicit choice. */
 export function useTheme() {
-  const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
-
-  return Colors[theme];
+  const { themeId } = useSettings();
+  return Colors[themeId];
 }

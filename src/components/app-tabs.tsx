@@ -1,11 +1,11 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { useSettings } from '@/hooks/useSettings';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const { themeId } = useSettings();
+  const colors = Colors[themeId];
 
   return (
     <NativeTabs
@@ -46,6 +46,11 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="stats">
         <NativeTabs.Trigger.Label>Stats</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="chart.pie" drawable="pie_chart" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="settings">
+        <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="gearshape" drawable="settings" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

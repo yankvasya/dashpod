@@ -13,6 +13,12 @@ interface QueueContextValue {
   removeEpisode: (episodeId: number) => Promise<void>;
   reorder: (episodeIdsInOrder: number[]) => Promise<void>;
   refresh: () => Promise<void>;
+  /** Episodes auto-advanced past this session (not persisted — History is the durable record). */
+  playedFromQueue: QueuedEpisode[];
+  /** Removes an episode from the queue because playback moved past it, recording it in
+   * playedFromQueue — distinct from removeEpisode, which is for user-initiated deletion. */
+  markPlayed: (episodeId: number) => Promise<void>;
+  clearPlayedFromQueue: () => void;
 }
 
 const QueueContext = createContext<QueueContextValue | null>(null);
@@ -22,6 +28,7 @@ export function QueueProvider({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
   const [queue, setQueue] = useState<QueuedEpisode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [playedFromQueue, setPlayedFromQueue] = useState<QueuedEpisode[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -57,6 +64,21 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     [db, refresh]
   );
 
+  const markPlayed = useCallback(
+    async (episodeId: number) => {
+      const item = queue.find((queued) => queued.episodeId === episodeId);
+      await removeFromQueue(db, episodeId);
+      await refresh();
+      if (item) {
+        // Cap it — this is a convenience list for the current session, not a log to keep forever.
+        setPlayedFromQueue((prev) => [item, ...prev].slice(0, 50));
+      }
+    },
+    [db, queue, refresh]
+  );
+
+  const clearPlayedFromQueue = useCallback(() => setPlayedFromQueue([]), []);
+
   // Reorders the local list immediately so dragging feels instant, then persists in the
   // background — unlike add/remove, a drag gesture can't tolerate waiting on a DB round-trip.
   const reorder = useCallback(
@@ -73,8 +95,30 @@ export function QueueProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ queue, loading, isQueued, addEpisode, removeEpisode, reorder, refresh }),
-    [queue, loading, isQueued, addEpisode, removeEpisode, reorder, refresh]
+    () => ({
+      queue,
+      loading,
+      isQueued,
+      addEpisode,
+      removeEpisode,
+      reorder,
+      refresh,
+      playedFromQueue,
+      markPlayed,
+      clearPlayedFromQueue,
+    }),
+    [
+      queue,
+      loading,
+      isQueued,
+      addEpisode,
+      removeEpisode,
+      reorder,
+      refresh,
+      playedFromQueue,
+      markPlayed,
+      clearPlayedFromQueue,
+    ]
   );
 
   return <QueueContext.Provider value={value}>{children}</QueueContext.Provider>;

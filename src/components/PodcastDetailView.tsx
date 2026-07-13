@@ -14,7 +14,7 @@ import { usePlayer } from '@/hooks/usePlayer';
 import { usePodcastDetail } from '@/hooks/usePodcastDetail';
 import { useQueue } from '@/hooks/useQueue';
 import type { Episode } from '@/types/podcast';
-import { formatDate, formatDuration, formatProgress } from '@/utils/format';
+import { formatDate, formatDuration, formatProgress, stripHtml } from '@/utils/format';
 
 interface PodcastDetailViewProps {
   feedUrl: string;
@@ -112,9 +112,9 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
               <ThemedText themeColor="textSecondary" style={styles.centerText}>
                 {podcast.author}
               </ThemedText>
-              {podcast.description ? (
+              {stripHtml(podcast.description) ? (
                 <ThemedText type="small" themeColor="textSecondary">
-                  {podcast.description}
+                  {stripHtml(podcast.description)}
                 </ThemedText>
               ) : null}
               <Pressable onPress={toggleSubscription} disabled={subscribing} style={styles.subscribeButton}>

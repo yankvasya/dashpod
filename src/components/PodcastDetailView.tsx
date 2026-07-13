@@ -4,6 +4,7 @@ import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DescriptionText } from '@/components/DescriptionText';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -14,7 +15,7 @@ import { usePlayer } from '@/hooks/usePlayer';
 import { usePodcastDetail } from '@/hooks/usePodcastDetail';
 import { useQueue } from '@/hooks/useQueue';
 import type { Episode } from '@/types/podcast';
-import { formatDate, formatDuration, formatProgress, stripHtml } from '@/utils/format';
+import { formatDate, formatDuration, formatProgress } from '@/utils/format';
 
 interface PodcastDetailViewProps {
   feedUrl: string;
@@ -112,11 +113,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
               <ThemedText themeColor="textSecondary" style={styles.centerText}>
                 {podcast.author}
               </ThemedText>
-              {stripHtml(podcast.description) ? (
-                <ThemedText type="small" themeColor="textSecondary">
-                  {stripHtml(podcast.description)}
-                </ThemedText>
-              ) : null}
+              <DescriptionText html={podcast.description} type="small" themeColor="textSecondary" />
               <Pressable onPress={toggleSubscription} disabled={subscribing} style={styles.subscribeButton}>
                 {subscribing ? (
                   <ActivityIndicator />

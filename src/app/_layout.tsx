@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useEffect } from 'react';
@@ -22,6 +22,12 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
+  // MiniPlayer is rendered outside the Stack (so it overlays every tab), which means nothing
+  // stops it from also rendering on top of the "player" modal route. On iOS the native modal
+  // presentation happens to visually cover it regardless; Android's JS-driven modal transition
+  // doesn't, so the mini player stayed visible and tappable there — each tap pushed another
+  // "player" screen onto the stack. Hide it explicitly whenever that route is active.
+  const isPlayerRouteOpen = usePathname() === '/player';
 
   useEffect(() => {
     configureAudioSession();
@@ -40,14 +46,16 @@ export default function RootLayout() {
                     <Stack.Screen name="(tabs)" />
                     <Stack.Screen name="player" options={{ presentation: 'modal', headerShown: false }} />
                   </Stack>
-                  <View
-                    style={[
-                      styles.miniPlayerContainer,
-                      { bottom: BottomTabBarHeight + insets.bottom + Spacing.one },
-                    ]}
-                    pointerEvents="box-none">
-                    <MiniPlayer />
-                  </View>
+                  {!isPlayerRouteOpen && (
+                    <View
+                      style={[
+                        styles.miniPlayerContainer,
+                        { bottom: BottomTabBarHeight + insets.bottom + Spacing.one },
+                      ]}
+                      pointerEvents="box-none">
+                      <MiniPlayer />
+                    </View>
+                  )}
                   <DownloadProgressBanner />
                 </PlayerProvider>
               </QueueProvider>

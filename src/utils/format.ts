@@ -41,10 +41,10 @@ const HTML_ENTITIES: Record<string, string> = {
   nbsp: ' ',
 };
 
-/** Feed descriptions are often HTML — strip tags and decode entities down to plain text
- * for display in places that just render a text block (no rich-text support here). */
-export function stripHtml(html: string): string {
-  if (!html) return '';
+/** Decodes entities and strips tags, but doesn't trim — used by both stripHtml (which trims the
+ * whole result) and parseDescriptionSegments (which must NOT trim interior slices, since that
+ * would eat the space between "...text " and " <a>link</a>" and run words together). */
+function decodeAndStripTags(html: string): string {
   const withBreaks = html
     .replace(/<\s*(br|\/p|\/div|\/li)\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, '');
@@ -56,10 +56,54 @@ export function stripHtml(html: string): string {
     }
     return HTML_ENTITIES[entity.toLowerCase()] ?? match;
   });
-  return decoded
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n\s*\n+/g, '\n\n')
-    .trim();
+  return decoded.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n\n');
+}
+
+/** Feed descriptions are often HTML — strip tags and decode entities down to plain text
+ * for display in places that just render a text block (no rich-text support here). */
+export function stripHtml(html: string): string {
+  if (!html) return '';
+  return decodeAndStripTags(html).trim();
+}
+
+export interface DescriptionSegment {
+  text: string;
+  /** Present only for segments that came from an <a href> — render as a tappable link. */
+  href?: string;
+}
+
+const LINK_TAG_RE = /<a\s+[^>]*?href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+const SUPPORTED_LINK_SCHEMES = /^(https?:|mailto:)/i;
+
+/** Like stripHtml, but keeps <a href> targets instead of discarding them — for rendering
+ * descriptions with tappable links rather than a plain text block. */
+export function parseDescriptionSegments(html: string): DescriptionSegment[] {
+  if (!html) return [];
+  const segments: DescriptionSegment[] = [];
+  let lastIndex = 0;
+  LINK_TAG_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = LINK_TAG_RE.exec(html))) {
+    const [full, href, label] = match;
+    if (match.index > lastIndex) {
+      const plain = decodeAndStripTags(html.slice(lastIndex, match.index));
+      if (plain) segments.push({ text: plain });
+    }
+    const linkText = decodeAndStripTags(label).trim();
+    if (linkText) {
+      segments.push(SUPPORTED_LINK_SCHEMES.test(href) ? { text: linkText, href } : { text: linkText });
+    }
+    lastIndex = match.index + full.length;
+  }
+  if (lastIndex < html.length) {
+    const plain = decodeAndStripTags(html.slice(lastIndex));
+    if (plain) segments.push({ text: plain });
+  }
+  if (segments.length > 0) {
+    segments[0].text = segments[0].text.trimStart();
+    segments[segments.length - 1].text = segments[segments.length - 1].text.trimEnd();
+  }
+  return segments;
 }
 
 /** "Today" / "Yesterday" / "Mon, Jan 5" — for the "YYYY-MM-DD" strings DayStats.date uses. */

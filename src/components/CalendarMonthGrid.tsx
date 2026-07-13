@@ -162,7 +162,6 @@ const styles = StyleSheet.create({
   scrim: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {
     borderTopLeftRadius: Spacing.five,

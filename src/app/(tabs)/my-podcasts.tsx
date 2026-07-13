@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,22 +8,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { usePodcastDetailNavigation } from '@/hooks/usePodcastDetailNavigation';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
 
 export default function MyPodcastsScreen() {
   const theme = useTheme();
   const { subscriptions, unsubscribe } = useSubscriptions();
-  // `selectedFeedUrl` drives visibility; `mountedFeedUrl` stays set once a podcast has been
-  // opened so going back and re-opening the same one just toggles display instead of
-  // unmounting/remounting PodcastDetailView (which was re-fetching and re-flashing images
-  // every time — the "v-if vs v-show" difference).
-  const [selectedFeedUrl, setSelectedFeedUrl] = useState<string | null>(null);
-  const [mountedFeedUrl, setMountedFeedUrl] = useState<string | null>(null);
-
-  function openPodcast(feedUrl: string) {
-    setMountedFeedUrl(feedUrl);
-    setSelectedFeedUrl(feedUrl);
-  }
+  const { selectedFeedUrl, mountedFeedUrl, openPodcast, closePodcast } = usePodcastDetailNavigation();
 
   return (
     <ThemedView style={styles.container}>
@@ -70,7 +60,7 @@ export default function MyPodcastsScreen() {
 
         {mountedFeedUrl && (
           <View style={[styles.flexFill, styles.absoluteFill, !selectedFeedUrl && styles.hidden]}>
-            <PodcastDetailView feedUrl={mountedFeedUrl} onBack={() => setSelectedFeedUrl(null)} />
+            <PodcastDetailView feedUrl={mountedFeedUrl} onBack={closePodcast} />
           </View>
         )}
       </SafeAreaView>

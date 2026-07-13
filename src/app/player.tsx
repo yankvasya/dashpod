@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DescriptionText } from '@/components/DescriptionText';
 import { LoadingRing } from '@/components/player/LoadingRing';
 import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
 import { formatSleepTimerRemaining, SleepTimerModal } from '@/components/player/SleepTimerModal';
@@ -15,7 +16,6 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayer } from '@/hooks/usePlayer';
-import { stripHtml } from '@/utils/format';
 
 const SKIP_SECONDS = 10;
 
@@ -58,6 +58,11 @@ export default function PlayerScreen() {
   const [speedModalVisible, setSpeedModalVisible] = useState(false);
   const [sleepTimerModalVisible, setSleepTimerModalVisible] = useState(false);
   const wasPlayingBeforeSeekRef = useRef(false);
+  // seekTo()'s promise resolves once the seek command is issued, not once a remote/streaming
+  // source has actually finished re-buffering to that position — so status.currentTime can still
+  // briefly report the pre-seek position after `seeking` flips off. Hold the display at the
+  // target until playback position actually catches up, instead of letting it bounce back.
+  const pendingSeekTargetRef = useRef<number | null>(null);
   const fadePulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -84,13 +89,28 @@ export default function PlayerScreen() {
   if (!nowPlaying) return null;
 
   const artworkUrl = nowPlaying.episode.artworkUrl ?? nowPlaying.podcastArtworkUrl;
-  const displayPosition = seeking ? seekValue : status.currentTime;
+  // Once playback position actually reaches the pending seek target, stop holding the display
+  // there and go back to tracking it live.
+  if (
+    pendingSeekTargetRef.current != null &&
+    Math.abs(status.currentTime - pendingSeekTargetRef.current) < 1.5
+  ) {
+    pendingSeekTargetRef.current = null;
+  }
+  const displayPosition = seeking
+    ? seekValue
+    : (pendingSeekTargetRef.current ?? status.currentTime);
   const duration = status.duration || 0;
   const isLoading = episodeLoading || status.isBuffering;
 
+  function commitSeek(value: number) {
+    pendingSeekTargetRef.current = value;
+    seekTo(value);
+  }
+
   function skipBy(deltaSeconds: number) {
     const upperBound = duration > 0 ? duration : Infinity;
-    seekTo(Math.min(Math.max(status.currentTime + deltaSeconds, 0), upperBound));
+    commitSeek(Math.min(Math.max(status.currentTime + deltaSeconds, 0), upperBound));
   }
 
   return (
@@ -118,11 +138,14 @@ export default function PlayerScreen() {
             {nowPlaying.podcastTitle}
           </ThemedText>
 
-          {showInfo && stripHtml(nowPlaying.episode.description) ? (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.description}>
-              {stripHtml(nowPlaying.episode.description)}
-            </ThemedText>
-          ) : null}
+          {showInfo && (
+            <DescriptionText
+              html={nowPlaying.episode.description}
+              type="small"
+              themeColor="textSecondary"
+              style={styles.description}
+            />
+          )}
 
           <View style={styles.sliderSection}>
             <Slider
@@ -137,6 +160,7 @@ export default function PlayerScreen() {
               }}
               onValueChange={setSeekValue}
               onSlidingComplete={async (value) => {
+                pendingSeekTargetRef.current = value;
                 await seekTo(value);
                 if (wasPlayingBeforeSeekRef.current) play();
                 setSeeking(false);

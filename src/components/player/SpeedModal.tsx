@@ -61,12 +61,6 @@ export function SpeedModal({ visible, rate, onChange, onClose }: SpeedModalProps
               maximumTrackTintColor={theme.backgroundSelected}
               thumbTintColor={theme.accent}
             />
-
-            <Pressable onPress={onClose} style={styles.doneButton}>
-              <ThemedText type="smallBold" themeColor="accent">
-                Done
-              </ThemedText>
-            </Pressable>
           </ThemedView>
         </Pressable>
       </Pressable>
@@ -78,7 +72,6 @@ const styles = StyleSheet.create({
   scrim: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {
     borderTopLeftRadius: Spacing.five,
@@ -99,9 +92,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.four,
-  },
-  doneButton: {
-    alignItems: 'center',
-    paddingVertical: Spacing.two,
   },
 });

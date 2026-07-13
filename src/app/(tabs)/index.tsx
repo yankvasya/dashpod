@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { usePodcastDetailNavigation } from '@/hooks/usePodcastDetailNavigation';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
 import { searchPodcasts } from '@/services/itunesSearch';
 import type { ITunesSearchResult } from '@/types/podcast';
@@ -27,22 +28,12 @@ export default function HomeScreen() {
   const [rssError, setRssError] = useState<string | null>(null);
 
   const [pendingFeedUrl, setPendingFeedUrl] = useState<string | null>(null);
-  // `selectedFeedUrl` drives visibility; `mountedFeedUrl` stays set once a podcast has been
-  // opened so going back and re-opening the same one just toggles display instead of
-  // unmounting/remounting PodcastDetailView (which was re-fetching and re-flashing images
-  // every time — the "v-if vs v-show" difference).
-  const [selectedFeedUrl, setSelectedFeedUrl] = useState<string | null>(null);
-  const [mountedFeedUrl, setMountedFeedUrl] = useState<string | null>(null);
+  const { selectedFeedUrl, mountedFeedUrl, openPodcast, closePodcast } = usePodcastDetailNavigation();
 
   const subscribedFeedUrls = useMemo(
     () => new Set(subscriptions.map((podcast) => podcast.feedUrl)),
     [subscriptions]
   );
-
-  function openPodcast(feedUrl: string) {
-    setMountedFeedUrl(feedUrl);
-    setSelectedFeedUrl(feedUrl);
-  }
 
   async function runSearch() {
     if (!query.trim()) return;
@@ -200,7 +191,7 @@ export default function HomeScreen() {
 
         {mountedFeedUrl && (
           <View style={[styles.flexFill, styles.absoluteFill, !selectedFeedUrl && styles.hidden]}>
-            <PodcastDetailView feedUrl={mountedFeedUrl} onBack={() => setSelectedFeedUrl(null)} />
+            <PodcastDetailView feedUrl={mountedFeedUrl} onBack={closePodcast} />
           </View>
         )}
       </SafeAreaView>
@@ -286,7 +277,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.five,
   },
   rssSection: {
-    marginTop: Spacing.four,
     gap: Spacing.two,
     borderRadius: Spacing.three,
     padding: Spacing.three,

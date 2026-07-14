@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useEffect } from 'react';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,13 +14,32 @@ import { migrateDbIfNeeded } from '@/db/database';
 import { DownloadsProvider } from '@/hooks/useDownloads';
 import { PlayerProvider } from '@/hooks/usePlayer';
 import { QueueProvider } from '@/hooks/useQueue';
+import { SettingsProvider, useSettings } from '@/hooks/useSettings';
 import { SubscriptionsProvider } from '@/hooks/useSubscriptions';
 import { configureAudioSession } from '@/services/audio';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  useEffect(() => {
+    configureAudioSession();
+  }, []);
+
+  return (
+    <GestureHandlerRootView style={styles.root}>
+      <SQLiteProvider databaseName="dashpod.db" onInit={migrateDbIfNeeded}>
+        <SettingsProvider>
+          <RootLayoutContent />
+        </SettingsProvider>
+      </SQLiteProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+/** Split out from RootLayout so it can read the user's chosen theme (Settings screen) via
+ * useSettings — that hook needs SettingsProvider above it, which itself needs SQLiteProvider. */
+function RootLayoutContent() {
+  const { themeId } = useSettings();
   const insets = useSafeAreaInsets();
   // MiniPlayer is rendered outside the Stack (so it overlays every tab), which means nothing
   // stops it from also rendering on top of the "player" modal route. On iOS the native modal
@@ -29,41 +48,33 @@ export default function RootLayout() {
   // "player" screen onto the stack. Hide it explicitly whenever that route is active.
   const isPlayerRouteOpen = usePathname() === '/player';
 
-  useEffect(() => {
-    configureAudioSession();
-  }, []);
-
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <SQLiteProvider databaseName="dashpod.db" onInit={migrateDbIfNeeded}>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <AnimatedSplashOverlay />
-          <SubscriptionsProvider>
-            <DownloadsProvider>
-              <QueueProvider>
-                <PlayerProvider>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="player" options={{ presentation: 'modal', headerShown: false }} />
-                  </Stack>
-                  {!isPlayerRouteOpen && (
-                    <View
-                      style={[
-                        styles.miniPlayerContainer,
-                        { bottom: BottomTabBarHeight + insets.bottom + Spacing.one },
-                      ]}
-                      pointerEvents="box-none">
-                      <MiniPlayer />
-                    </View>
-                  )}
-                  <DownloadProgressBanner />
-                </PlayerProvider>
-              </QueueProvider>
-            </DownloadsProvider>
-          </SubscriptionsProvider>
-        </ThemeProvider>
-      </SQLiteProvider>
-    </GestureHandlerRootView>
+    <ThemeProvider value={themeId === 'dark' ? DarkTheme : DefaultTheme}>
+      <AnimatedSplashOverlay />
+      <SubscriptionsProvider>
+        <DownloadsProvider>
+          <QueueProvider>
+            <PlayerProvider>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="player" options={{ presentation: 'modal', headerShown: false }} />
+              </Stack>
+              {!isPlayerRouteOpen && (
+                <View
+                  style={[
+                    styles.miniPlayerContainer,
+                    { bottom: BottomTabBarHeight + insets.bottom + Spacing.one },
+                  ]}
+                  pointerEvents="box-none">
+                  <MiniPlayer />
+                </View>
+              )}
+              <DownloadProgressBanner />
+            </PlayerProvider>
+          </QueueProvider>
+        </DownloadsProvider>
+      </SubscriptionsProvider>
+    </ThemeProvider>
   );
 }
 

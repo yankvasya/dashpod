@@ -26,6 +26,11 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       position INTEGER NOT NULL,
       added_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
   try {
     await db.execAsync('ALTER TABLE playback_state ADD COLUMN is_finished INTEGER NOT NULL DEFAULT 0');

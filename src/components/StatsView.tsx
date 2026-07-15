@@ -1,10 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CalendarMonthGrid } from '@/components/CalendarMonthGrid';
 import { ThemedText } from '@/components/themed-text';
@@ -27,7 +25,9 @@ const PERIOD_TYPES: { type: PeriodType; label: string }[] = [
 
 const CHART_COLORS = ['#6C63FF', '#5AC8FA', '#FF9F43', '#FF6B81', '#2ED9C3', '#FFD166', '#A78BFA', '#4ECDC4'];
 
-export default function StatsScreen() {
+/** Rendered in place within the More tab (not a routed push) — see more.tsx, which swaps this in
+ * via local state, same pattern as PodcastDetailView. */
+export function StatsView({ onBack }: { onBack: () => void }) {
   const theme = useTheme();
   const [period, setPeriod] = useState<Period>({ type: 'day', anchor: new Date() });
   const [calendarVisible, setCalendarVisible] = useState(false);
@@ -113,114 +113,103 @@ export default function StatsScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            Back
-          </ThemedText>
-        </Pressable>
-
-        <ThemedText type="title" style={styles.title}>
-          Stats
+    <>
+      <Pressable onPress={onBack} hitSlop={8} style={styles.backButton}>
+        <ThemedText type="smallBold" themeColor="textSecondary">
+          Back
         </ThemedText>
+      </Pressable>
 
-        <ThemedView type="backgroundElement" style={styles.toggle}>
-          {PERIOD_TYPES.map((option) => (
-            <Pressable
-              key={option.type}
-              onPress={() => setPeriod({ type: option.type, anchor: new Date() })}
-              style={[
-                styles.toggleButton,
-                period.type === option.type && { backgroundColor: theme.backgroundSelected },
-              ]}>
-              <ThemedText type="smallBold" themeColor={period.type === option.type ? 'text' : 'textSecondary'}>
-                {option.label}
-              </ThemedText>
-            </Pressable>
-          ))}
+      <ThemedText type="title" style={styles.title}>
+        Stats
+      </ThemedText>
+
+      <ThemedView type="backgroundElement" style={styles.toggle}>
+        {PERIOD_TYPES.map((option) => (
+          <Pressable
+            key={option.type}
+            onPress={() => setPeriod({ type: option.type, anchor: new Date() })}
+            style={[styles.toggleButton, period.type === option.type && { backgroundColor: theme.backgroundSelected }]}>
+            <ThemedText type="smallBold" themeColor={period.type === option.type ? 'text' : 'textSecondary'}>
+              {option.label}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </ThemedView>
+
+      {period.type !== 'all' && (
+        <ThemedView style={styles.navigator}>
+          <Pressable onPress={() => setPeriod(shiftPeriod(period, -1))} hitSlop={8} style={styles.navButton}>
+            <ThemedText type="smallBold" themeColor="accent">
+              ‹
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => period.type === 'day' && setCalendarVisible(true)}
+            disabled={period.type !== 'day'}
+            style={styles.navLabel}>
+            <ThemedText type="smallBold">{getPeriodLabel(period)}</ThemedText>
+            {period.type === 'day' && <Ionicons name="calendar-outline" color={theme.textSecondary} size={14} />}
+          </Pressable>
+          <Pressable
+            onPress={() => canGoNext && setPeriod(shiftPeriod(period, 1))}
+            disabled={!canGoNext}
+            hitSlop={8}
+            style={styles.navButton}>
+            <ThemedText type="smallBold" themeColor={canGoNext ? 'accent' : 'textSecondary'}>
+              ›
+            </ThemedText>
+          </Pressable>
         </ThemedView>
+      )}
 
-        {period.type !== 'all' && (
-          <ThemedView style={styles.navigator}>
-            <Pressable onPress={() => setPeriod(shiftPeriod(period, -1))} hitSlop={8} style={styles.navButton}>
-              <ThemedText type="smallBold" themeColor="accent">
-                ‹
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              onPress={() => period.type === 'day' && setCalendarVisible(true)}
-              disabled={period.type !== 'day'}
-              style={styles.navLabel}>
-              <ThemedText type="smallBold">{getPeriodLabel(period)}</ThemedText>
-              {period.type === 'day' && <Ionicons name="calendar-outline" color={theme.textSecondary} size={14} />}
-            </Pressable>
-            <Pressable
-              onPress={() => canGoNext && setPeriod(shiftPeriod(period, 1))}
-              disabled={!canGoNext}
-              hitSlop={8}
-              style={styles.navButton}>
-              <ThemedText type="smallBold" themeColor={canGoNext ? 'accent' : 'textSecondary'}>
-                ›
-              </ThemedText>
-            </Pressable>
-          </ThemedView>
-        )}
+      <FlatList
+        data={stats}
+        keyExtractor={(item) => String(item.podcastId)}
+        contentContainerStyle={[
+          styles.listContent,
+          nowPlaying && { paddingBottom: BottomTabInset + Spacing.four + MiniPlayerHeight },
+        ]}
+        ListHeaderComponent={
+          pieData.length > 0 ? (
+            <View style={styles.chartContainer}>
+              <PieChart
+                data={pieData}
+                donut
+                radius={90}
+                innerRadius={60}
+                innerCircleColor={theme.background}
+                centerLabelComponent={() => (
+                  <ThemedText type="smallBold" style={styles.chartCenterText}>
+                    {formatDuration(totalMinutes * 60)}
+                  </ThemedText>
+                )}
+              />
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          !loading ? (
+            <ThemedText themeColor="textSecondary" style={styles.emptyText}>
+              Nothing listened to in this period yet.
+            </ThemedText>
+          ) : null
+        }
+        ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
+        renderItem={renderPodcastRow}
+      />
 
-        <FlatList
-          data={stats}
-          keyExtractor={(item) => String(item.podcastId)}
-          contentContainerStyle={[
-            styles.listContent,
-            nowPlaying && { paddingBottom: BottomTabInset + Spacing.four + MiniPlayerHeight },
-          ]}
-          ListHeaderComponent={
-            pieData.length > 0 ? (
-              <View style={styles.chartContainer}>
-                <PieChart
-                  data={pieData}
-                  donut
-                  radius={90}
-                  innerRadius={60}
-                  innerCircleColor={theme.background}
-                  centerLabelComponent={() => (
-                    <ThemedText type="smallBold" style={styles.chartCenterText}>
-                      {formatDuration(totalMinutes * 60)}
-                    </ThemedText>
-                  )}
-                />
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            !loading ? (
-              <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-                Nothing listened to in this period yet.
-              </ThemedText>
-            ) : null
-          }
-          ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
-          renderItem={renderPodcastRow}
-        />
-
-        <CalendarMonthGrid
-          visible={calendarVisible}
-          selectedDate={period.anchor}
-          onSelect={(date) => setPeriod({ type: 'day', anchor: date })}
-          onClose={() => setCalendarVisible(false)}
-        />
-      </SafeAreaView>
-    </ThemedView>
+      <CalendarMonthGrid
+        visible={calendarVisible}
+        selectedDate={period.anchor}
+        onSelect={(date) => setPeriod({ type: 'day', anchor: date })}
+        onClose={() => setCalendarVisible(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
   backButton: {
     alignSelf: 'flex-start',
     paddingHorizontal: Spacing.four,

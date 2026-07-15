@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
@@ -11,6 +11,7 @@ import { usePlayer } from '@/hooks/usePlayer';
 
 export default function MiniPlayer() {
   const router = useRouter();
+  const pathname = usePathname();
   const theme = useTheme();
   const { nowPlaying, status, episodeLoading, play, pause } = usePlayer();
 
@@ -22,7 +23,10 @@ export default function MiniPlayer() {
 
   return (
     <Pressable
-      onPress={() => router.push('/player')}
+      // Belt-and-suspenders against the player screen stacking multiple times: the root layout
+      // already hides this container while `/player` is open, but guard the push itself too in
+      // case that hide ever lags a tap (e.g. mid-transition).
+      onPress={() => pathname !== '/player' && router.push('/player')}
       style={({ pressed }) => [
         styles.container,
         { backgroundColor: theme.backgroundElement },

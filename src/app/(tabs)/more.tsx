@@ -1,43 +1,69 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { Pressable, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { BackHandler, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HistoryView } from '@/components/HistoryView';
+import { StatsView } from '@/components/StatsView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+type Section = 'history' | 'stats' | null;
+
 const MORE_ITEMS = [
-  { href: '/history', label: 'History', icon: 'time-outline' },
-  { href: '/stats', label: 'Stats', icon: 'pie-chart-outline' },
+  { key: 'history', label: 'History', icon: 'time-outline' },
+  { key: 'stats', label: 'Stats', icon: 'pie-chart-outline' },
 ] as const;
 
+/** History/Stats render in place here (not routed pushes) — pushing them as root-level Stack
+ * screens from within NativeTabs turned out unreliable (inconsistent open behavior across
+ * platforms), so this follows the same proven local-state + Back pattern already used for
+ * PodcastDetailView instead. */
 export default function MoreScreen() {
   const theme = useTheme();
+  const [section, setSection] = useState<Section>(null);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (section) {
+        setSection(null);
+        return true;
+      }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [section]);
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ThemedText type="title" style={styles.title}>
-          More
-        </ThemedText>
+        {section === 'history' && <HistoryView onBack={() => setSection(null)} />}
+        {section === 'stats' && <StatsView onBack={() => setSection(null)} />}
+        {!section && (
+          <>
+            <ThemedText type="title" style={styles.title}>
+              More
+            </ThemedText>
 
-        <ThemedView type="backgroundElement" style={styles.section}>
-          {MORE_ITEMS.map((item, index) => (
-            <Pressable
-              key={item.href}
-              onPress={() => router.push(item.href)}
-              style={[
-                styles.row,
-                index > 0 && [styles.rowBorder, { borderColor: theme.backgroundSelected }],
-              ]}>
-              <Ionicons name={item.icon} color={theme.text} size={20} />
-              <ThemedText style={styles.rowLabel}>{item.label}</ThemedText>
-              <Ionicons name="chevron-forward-outline" color={theme.textSecondary} size={16} />
-            </Pressable>
-          ))}
-        </ThemedView>
+            <ThemedView type="backgroundElement" style={styles.section}>
+              {MORE_ITEMS.map((item, index) => (
+                <Pressable
+                  key={item.key}
+                  onPress={() => setSection(item.key)}
+                  style={[
+                    styles.row,
+                    index > 0 && [styles.rowBorder, { borderColor: theme.backgroundSelected }],
+                  ]}>
+                  <Ionicons name={item.icon} color={theme.text} size={20} />
+                  <ThemedText style={styles.rowLabel}>{item.label}</ThemedText>
+                  <Ionicons name="chevron-forward-outline" color={theme.textSecondary} size={16} />
+                </Pressable>
+              ))}
+            </ThemedView>
+          </>
+        )}
       </SafeAreaView>
     </ThemedView>
   );

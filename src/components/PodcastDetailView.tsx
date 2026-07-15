@@ -173,25 +173,24 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
                   onPress={() => handleDownloadPress(item as Episode)}
                   disabled={downloading}
                   hitSlop={8}
-                  style={styles.downloadButton}>
+                  style={[styles.iconButton, { backgroundColor: downloaded ? theme.accent : theme.backgroundElement }]}>
                   {downloading ? (
                     <ActivityIndicator size="small" color={theme.textSecondary} />
                   ) : (
                     <Ionicons
-                      name={downloaded ? 'checkmark-circle' : 'download-outline'}
-                      color={downloaded ? theme.accent : theme.textSecondary}
-                      size={20}
+                      name="download-outline"
+                      color={downloaded ? theme.background : theme.textSecondary}
+                      size={18}
                     />
                   )}
                 </Pressable>
               )}
               {hasId && (
-                <Pressable onPress={() => handleQueuePress(item as Episode)} hitSlop={8} style={styles.queueButton}>
-                  <Ionicons
-                    name={queued ? 'checkmark-done-circle' : 'add-circle-outline'}
-                    color={queued ? theme.accent : theme.textSecondary}
-                    size={20}
-                  />
+                <Pressable
+                  onPress={() => handleQueuePress(item as Episode)}
+                  hitSlop={8}
+                  style={[styles.iconButton, { backgroundColor: queued ? theme.accent : theme.backgroundElement }]}>
+                  <Ionicons name="list-outline" color={queued ? theme.background : theme.textSecondary} size={18} />
                 </Pressable>
               )}
               <EpisodePlayButton
@@ -257,11 +256,12 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
   },
-  downloadButton: {
-    padding: Spacing.one,
-  },
-  queueButton: {
-    padding: Spacing.one,
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   separator: {
     height: StyleSheet.hairlineWidth,

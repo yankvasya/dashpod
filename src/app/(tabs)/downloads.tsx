@@ -38,7 +38,10 @@ export default function DownloadsScreen() {
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
   const { isQueued, addEpisode, removeEpisode } = useQueue();
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
-  const [confirmAllVisible, setConfirmAllVisible] = useState(false);
+
+  const listenedDownloads = downloads.filter((item) => item.isFinished);
+  const listenedSize = listenedDownloads.reduce((sum, item) => sum + item.fileSizeBytes, 0);
+  const allSize = downloads.reduce((sum, item) => sum + item.fileSizeBytes, 0);
 
   async function handlePlayPause(item: DownloadedEpisode) {
     if (nowPlaying?.episode.id === item.episodeId) {
@@ -146,12 +149,8 @@ export default function DownloadsScreen() {
                 <Pressable
                   onPress={() => handleQueuePress(item)}
                   hitSlop={8}
-                  style={styles.queueButton}>
-                  <Ionicons
-                    name={queued ? 'checkmark-done-circle' : 'add-circle-outline'}
-                    color={queued ? theme.accent : theme.textSecondary}
-                    size={18}
-                  />
+                  style={[styles.iconButton, { backgroundColor: queued ? theme.accent : theme.backgroundElement }]}>
+                  <Ionicons name="list-outline" color={queued ? theme.background : theme.textSecondary} size={18} />
                 </Pressable>
                 <EpisodePlayButton
                   playing={isCurrent && status.playing}
@@ -167,45 +166,30 @@ export default function DownloadsScreen() {
 
       <ModalSheet visible={deleteMenuVisible} onClose={() => setDeleteMenuVisible(false)} contentStyle={styles.sheet}>
         <ThemedText type="subtitle" style={styles.centerText}>
-          Delete Downloads
+          Delete podcasts
         </ThemedText>
         <Pressable
           onPress={() => {
             setDeleteMenuVisible(false);
             deleteAllListened();
           }}
-          style={styles.sheetOption}>
-          <ThemedText type="smallBold">All Listened</ThemedText>
+          disabled={listenedDownloads.length === 0}
+          style={[styles.deleteOutlineButton, { borderColor: theme.danger, opacity: listenedDownloads.length === 0 ? 0.4 : 1 }]}>
+          <Ionicons name="trash-outline" color={theme.danger} size={16} />
+          <ThemedText type="smallBold" themeColor="danger">
+            {`Only Listened (${listenedDownloads.length} ep, ${formatFileSize(listenedSize)})`}
+          </ThemedText>
         </Pressable>
         <Pressable
           onPress={() => {
             setDeleteMenuVisible(false);
-            setConfirmAllVisible(true);
-          }}
-          style={styles.sheetOption}>
-          <Ionicons name="trash-outline" color={theme.danger} size={16} />
-          <ThemedText type="smallBold" themeColor="danger">
-            All
-          </ThemedText>
-        </Pressable>
-      </ModalSheet>
-
-      <ModalSheet visible={confirmAllVisible} onClose={() => setConfirmAllVisible(false)} contentStyle={styles.sheet}>
-        <ThemedText type="subtitle" style={styles.centerText}>
-          Delete All Downloads
-        </ThemedText>
-        <ThemedText themeColor="textSecondary" style={styles.centerText}>
-          {`This will permanently delete all ${downloads.length} downloaded episodes. This can't be undone.`}
-        </ThemedText>
-        <Pressable
-          onPress={() => {
-            setConfirmAllVisible(false);
             deleteAll();
           }}
-          style={styles.sheetOption}>
-          <Ionicons name="trash-outline" color={theme.danger} size={16} />
-          <ThemedText type="smallBold" themeColor="danger">
-            Delete All
+          disabled={downloads.length === 0}
+          style={[styles.deleteFilledButton, { backgroundColor: theme.danger, opacity: downloads.length === 0 ? 0.4 : 1 }]}>
+          <Ionicons name="trash-outline" color="#FFFFFF" size={16} />
+          <ThemedText type="smallBold" style={styles.whiteText}>
+            {`All Downloaded (${downloads.length} ep, ${formatFileSize(allSize)})`}
           </ThemedText>
         </Pressable>
       </ModalSheet>
@@ -267,8 +251,12 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: Spacing.one,
   },
-  queueButton: {
-    padding: Spacing.one,
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   separator: {
     height: StyleSheet.hairlineWidth,
@@ -283,11 +271,24 @@ const styles = StyleSheet.create({
   centerText: {
     textAlign: 'center',
   },
-  sheetOption: {
+  deleteOutlineButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
     paddingVertical: Spacing.three,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+  },
+  deleteFilledButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  whiteText: {
+    color: '#FFFFFF',
   },
 });

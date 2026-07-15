@@ -1,8 +1,8 @@
 import { SymbolView } from 'expo-symbols';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ModalSheet } from '@/components/ModalSheet';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -34,66 +34,50 @@ export function SleepTimerModal({
   const theme = useTheme();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose}>
-        <Pressable onPress={() => {}}>
-          <ThemedView style={styles.sheet}>
-            <ThemedText type="subtitle" style={styles.centerText}>
-              Sleep Timer
-            </ThemedText>
+    <ModalSheet visible={visible} onClose={onClose} contentStyle={styles.sheet}>
+      <ThemedText type="subtitle" style={styles.centerText}>
+        Sleep Timer
+      </ThemedText>
 
-            <View style={styles.grid}>
-              {PRESET_MINUTES.map((minutes) => (
-                <Pressable
-                  key={minutes}
-                  onPress={() => onSelectMinutes(minutes)}
-                  style={[styles.gridButton, { backgroundColor: theme.backgroundElement }]}>
-                  <ThemedText type="smallBold">{minutes} min</ThemedText>
-                </Pressable>
-              ))}
-              <Pressable
-                onPress={onSelectEndOfEpisode}
-                style={[
-                  styles.gridButton,
-                  { backgroundColor: mode === 'endOfEpisode' ? theme.accent : theme.backgroundElement },
-                ]}>
-                <ThemedText
-                  type="smallBold"
-                  themeColor={mode === 'endOfEpisode' ? 'background' : 'text'}
-                  style={styles.centerText}>
-                  End of Episode
-                </ThemedText>
-              </Pressable>
-            </View>
+      <View style={styles.grid}>
+        {PRESET_MINUTES.map((minutes) => (
+          <Pressable
+            key={minutes}
+            onPress={() => onSelectMinutes(minutes)}
+            style={[styles.gridButton, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText type="smallBold">{minutes} min</ThemedText>
+          </Pressable>
+        ))}
+      </View>
 
-            {mode !== 'off' && (
-              <Pressable onPress={onCancel} style={styles.deleteButton}>
-                <SymbolView
-                  tintColor={theme.danger}
-                  name={{ ios: 'trash', android: 'delete', web: 'delete' }}
-                  size={16}
-                />
-                <ThemedText type="smallBold" themeColor="danger">
-                  Delete Sleep Timer
-                </ThemedText>
-              </Pressable>
-            )}
-          </ThemedView>
-        </Pressable>
+      <Pressable
+        onPress={onSelectEndOfEpisode}
+        style={[
+          styles.endOfEpisodeButton,
+          { backgroundColor: mode === 'endOfEpisode' ? theme.accent : theme.backgroundElement },
+        ]}>
+        <ThemedText
+          type="smallBold"
+          themeColor={mode === 'endOfEpisode' ? 'background' : 'text'}
+          style={styles.centerText}>
+          End of Episode
+        </ThemedText>
       </Pressable>
-    </Modal>
+
+      {mode !== 'off' && (
+        <Pressable onPress={onCancel} style={styles.deleteButton}>
+          <SymbolView tintColor={theme.danger} name={{ ios: 'trash', android: 'delete', web: 'delete' }} size={16} />
+          <ThemedText type="smallBold" themeColor="danger">
+            Delete Sleep Timer
+          </ThemedText>
+        </Pressable>
+      )}
+    </ModalSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  scrim: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
   sheet: {
-    borderTopLeftRadius: Spacing.five,
-    borderTopRightRadius: Spacing.five,
-    padding: Spacing.five,
     gap: Spacing.three,
   },
   centerText: {
@@ -106,6 +90,12 @@ const styles = StyleSheet.create({
   },
   gridButton: {
     width: '31.5%',
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endOfEpisodeButton: {
     paddingVertical: Spacing.three,
     borderRadius: Spacing.three,
     alignItems: 'center',

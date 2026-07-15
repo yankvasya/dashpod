@@ -91,6 +91,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backButton: {
+    alignSelf: 'flex-start',
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
   },

@@ -44,7 +44,10 @@ export default function RootLayout() {
                 <PlayerProvider>
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="player" options={{ presentation: 'modal', headerShown: false }} />
+                    <Stack.Screen
+                      name="player"
+                      options={{ presentation: 'modal', animation: 'slide_from_bottom', headerShown: false }}
+                    />
                   </Stack>
                   {!isPlayerRouteOpen && (
                     <View

@@ -88,7 +88,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={[styles.topBar, { paddingTop: insets.top + Spacing.three }]}>
-        <Pressable onPress={onBack} hitSlop={8}>
+        <Pressable onPress={onBack} hitSlop={8} style={styles.backButton}>
           <ThemedText type="smallBold" themeColor="textSecondary">
             Back
           </ThemedText>
@@ -223,6 +223,9 @@ const styles = StyleSheet.create({
   topBar: {
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
   },
   listContent: {
     paddingHorizontal: Spacing.four,

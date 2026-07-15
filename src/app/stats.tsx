@@ -70,7 +70,7 @@ export default function StatsScreen() {
         <Pressable style={styles.row} onPress={() => toggleExpanded(item.podcastId)}>
           <View style={styles.swatchColumn}>
             <View style={[styles.swatch, { backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }]} />
-            <ThemedText type="small" themeColor="textSecondary" style={styles.swatchPercent}>
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.swatchPercent}>
               {percentage}%
             </ThemedText>
           </View>
@@ -228,6 +228,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backButton: {
+    alignSelf: 'flex-start',
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
   },
@@ -284,16 +285,24 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   swatchColumn: {
-    width: 28,
-    alignItems: 'center',
-    gap: Spacing.half,
+    width: 34,
+    height: 48,
   },
   swatch: {
+    position: 'absolute',
+    top: 20,
+    left: '50%',
+    marginLeft: -4,
     width: 8,
     height: 8,
     borderRadius: 4,
   },
   swatchPercent: {
+    position: 'absolute',
+    top: 30,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
     fontSize: 11,
     lineHeight: 13,
   },
@@ -307,7 +316,7 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   episodeList: {
-    paddingLeft: Spacing.four + 28 + Spacing.three + 48 + Spacing.three,
+    paddingLeft: Spacing.four + 34 + Spacing.three,
     paddingBottom: Spacing.three,
     gap: Spacing.three,
   },

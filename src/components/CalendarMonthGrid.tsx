@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ModalSheet } from '@/components/ModalSheet';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useHistory } from '@/hooks/useHistory';
 import { useTheme } from '@/hooks/use-theme';
@@ -69,104 +69,81 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose}>
-        <Pressable onPress={() => {}}>
-          <ThemedView style={styles.sheet}>
-            {monthTotalMinutes > 0 && (
-              <ThemedText type="small" themeColor="textSecondary" style={styles.monthTotal}>
-                {formatDuration(monthTotalMinutes * 60)} listened this month
-              </ThemedText>
-            )}
+    <ModalSheet visible={visible} onClose={onClose} contentStyle={styles.sheet}>
+      {monthTotalMinutes > 0 && (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.monthTotal}>
+          {formatDuration(monthTotalMinutes * 60)} listened this month
+        </ThemedText>
+      )}
 
-            <View style={styles.monthNav}>
-              <Pressable
-                onPress={() =>
-                  setDisplayedMonth(new Date(displayedMonth.getFullYear(), displayedMonth.getMonth() - 1, 1))
-                }
-                hitSlop={8}>
-                <ThemedText type="smallBold" themeColor="accent">
-                  ‹
+      <View style={styles.monthNav}>
+        <Pressable
+          onPress={() => setDisplayedMonth(new Date(displayedMonth.getFullYear(), displayedMonth.getMonth() - 1, 1))}
+          hitSlop={8}>
+          <ThemedText type="smallBold" themeColor="accent">
+            ‹
+          </ThemedText>
+        </Pressable>
+        <ThemedText type="smallBold">
+          {displayedMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+        </ThemedText>
+        <Pressable
+          onPress={() => setDisplayedMonth(new Date(displayedMonth.getFullYear(), displayedMonth.getMonth() + 1, 1))}
+          hitSlop={8}>
+          <ThemedText type="smallBold" themeColor="accent">
+            ›
+          </ThemedText>
+        </Pressable>
+      </View>
+
+      <View style={styles.weekdayRow}>
+        {WEEKDAY_LABELS.map((label) => (
+          <ThemedText key={label} type="small" themeColor="textSecondary" style={styles.weekdayLabel}>
+            {label}
+          </ThemedText>
+        ))}
+      </View>
+
+      <View style={styles.grid}>
+        {cells.map((date, index) => {
+          if (!date) return <View key={index} style={styles.dayCell} />;
+          const isToday = isSameDay(date, today);
+          const isSelected = isSameDay(date, selectedDate);
+          const isFuture = date.getTime() > today.getTime();
+          const totalMinutes = dailyTotals.get(formatLocalDate(date)) ?? 0;
+
+          return (
+            <Pressable
+              key={index}
+              onPress={() => !isFuture && handleSelect(date)}
+              disabled={isFuture}
+              style={styles.dayCell}>
+              <View
+                style={[
+                  styles.dayNumberWrap,
+                  isSelected && { backgroundColor: theme.accent },
+                  isToday && !isSelected && { borderColor: theme.accent },
+                ]}>
+                <ThemedText
+                  type="small"
+                  themeColor={isSelected ? 'background' : isFuture ? 'textSecondary' : 'text'}
+                  style={isFuture && styles.dimmedText}>
+                  {date.getDate()}
                 </ThemedText>
-              </Pressable>
-              <ThemedText type="smallBold">
-                {displayedMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-              </ThemedText>
-              <Pressable
-                onPress={() =>
-                  setDisplayedMonth(new Date(displayedMonth.getFullYear(), displayedMonth.getMonth() + 1, 1))
-                }
-                hitSlop={8}>
-                <ThemedText type="smallBold" themeColor="accent">
-                  ›
-                </ThemedText>
-              </Pressable>
-            </View>
-
-            <View style={styles.weekdayRow}>
-              {WEEKDAY_LABELS.map((label) => (
-                <ThemedText key={label} type="small" themeColor="textSecondary" style={styles.weekdayLabel}>
-                  {label}
-                </ThemedText>
-              ))}
-            </View>
-
-            <View style={styles.grid}>
-              {cells.map((date, index) => {
-                if (!date) return <View key={index} style={styles.dayCell} />;
-                const isToday = isSameDay(date, today);
-                const isSelected = isSameDay(date, selectedDate);
-                const isFuture = date.getTime() > today.getTime();
-                const totalMinutes = dailyTotals.get(formatLocalDate(date)) ?? 0;
-
-                return (
-                  <Pressable
-                    key={index}
-                    onPress={() => !isFuture && handleSelect(date)}
-                    disabled={isFuture}
-                    style={styles.dayCell}>
-                    <View
-                      style={[
-                        styles.dayNumberWrap,
-                        isSelected && { backgroundColor: theme.accent },
-                        isToday && !isSelected && { borderColor: theme.accent },
-                      ]}>
-                      <ThemedText
-                        type="small"
-                        themeColor={isSelected ? 'background' : isFuture ? 'textSecondary' : 'text'}
-                        style={isFuture && styles.dimmedText}>
-                        {date.getDate()}
-                      </ThemedText>
-                    </View>
-                    <ThemedText type="small" themeColor="textSecondary" style={styles.dayCaption}>
-                      {totalMinutes >= 1 ? formatDurationCompact(totalMinutes * 60) : ''}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Pressable onPress={onClose} style={styles.doneButton}>
-              <ThemedText type="smallBold" themeColor="accent">
-                Done
+              </View>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.dayCaption}>
+                {totalMinutes >= 1 ? formatDurationCompact(totalMinutes * 60) : ''}
               </ThemedText>
             </Pressable>
-          </ThemedView>
-        </Pressable>
-      </Pressable>
-    </Modal>
+          );
+        })}
+      </View>
+    </ModalSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  scrim: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
   sheet: {
-    borderTopLeftRadius: Spacing.five,
-    borderTopRightRadius: Spacing.five,
-    padding: Spacing.five,
     gap: Spacing.three,
   },
   monthTotal: {
@@ -211,9 +188,5 @@ const styles = StyleSheet.create({
   dayCaption: {
     fontSize: 9,
     lineHeight: 11,
-  },
-  doneButton: {
-    alignItems: 'center',
-    paddingVertical: Spacing.two,
   },
 });

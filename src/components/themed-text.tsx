@@ -58,12 +58,12 @@ const styles = StyleSheet.create({
   },
   link: {
     fontFamily: FontFamily.medium,
-    lineHeight: 30,
+    lineHeight: 20,
     fontSize: 14,
   },
   linkPrimary: {
     fontFamily: FontFamily.medium,
-    lineHeight: 30,
+    lineHeight: 20,
     fontSize: 14,
     color: '#3c87f7',
   },

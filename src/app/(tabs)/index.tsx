@@ -111,7 +111,7 @@ export default function HomeScreen() {
                     {searching ? (
                       <ActivityIndicator />
                     ) : (
-                      <ThemedText type="linkPrimary" themeColor="accent">
+                      <ThemedText type="linkPrimary" themeColor="accent" numberOfLines={1}>
                         Search
                       </ThemedText>
                     )}
@@ -177,7 +177,7 @@ export default function HomeScreen() {
                     {addingRss ? (
                       <ActivityIndicator />
                     ) : (
-                      <ThemedText type="linkPrimary" themeColor="accent">
+                      <ThemedText type="linkPrimary" themeColor="accent" numberOfLines={1}>
                         Add
                       </ThemedText>
                     )}

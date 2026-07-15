@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import { BackHandler } from 'react-native';
 
 /** Manages open/close state for the in-place `PodcastDetailView` pattern (rendered inline within
- * a tab screen rather than pushed as a route, so the native tab bar stays visible underneath —
- * see PodcastDetailView.tsx). Also intercepts Android's hardware back button: since opening a
- * podcast doesn't push a route, there's no navigation history for the back button to pop, so
- * without this it closes the whole app instead of returning to the list. Same idea for re-tapping
- * the already-active tab: NativeTabs' own "reset to root" behavior only resets an actual nested
+ * a tab screen rather than pushed as a route, so the tab bar stays visible underneath — see
+ * PodcastDetailView.tsx). Also intercepts Android's hardware back button: since opening a podcast
+ * doesn't push a route, there's no navigation history for the back button to pop, so without this
+ * it closes the whole app instead of returning to the list. Same idea for re-tapping the
+ * already-active tab: the tab router's own "reset to root" behavior only resets an actual nested
  * stack, and this podcast detail view isn't one — it's local state — so without this listener
  * re-tapping Home/My Podcasts while a podcast is open did nothing. */
 export function usePodcastDetailNavigation() {
@@ -39,7 +39,7 @@ export function usePodcastDetailNavigation() {
   }, [selectedFeedUrl]);
 
   useEffect(() => {
-    // @ts-expect-error -- 'tabPress' is part of NativeTabs' event map but the generic
+    // @ts-expect-error -- 'tabPress' is part of the tab navigator's event map but the generic
     // useNavigation() return type here isn't narrowed to it.
     return navigation.addListener('tabPress', () => {
       setSelectedFeedUrl((current) => (current ? null : current));

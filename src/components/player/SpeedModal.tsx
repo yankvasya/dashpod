@@ -1,7 +1,7 @@
-import Slider from '@react-native-community/slider';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ModalSheet } from '@/components/ModalSheet';
+import { Slider } from '@/components/Slider';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';

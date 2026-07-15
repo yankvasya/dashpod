@@ -1,9 +1,8 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, LayoutAnimation, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DescriptionText } from '@/components/DescriptionText';
@@ -11,6 +10,7 @@ import { LoadingRing } from '@/components/player/LoadingRing';
 import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
 import { formatSleepTimerRemaining, SleepTimerModal } from '@/components/player/SleepTimerModal';
 import { formatSpeed, SpeedModal } from '@/components/player/SpeedModal';
+import { Slider } from '@/components/Slider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -122,7 +122,12 @@ export default function PlayerScreen() {
               Close
             </ThemedText>
           </Pressable>
-          <Pressable onPress={() => setShowInfo((value) => !value)} hitSlop={8}>
+          <Pressable
+            onPress={() => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setShowInfo((value) => !value);
+            }}
+            hitSlop={8}>
             <ThemedText type="smallBold" themeColor="textSecondary">
               {showInfo ? 'Hide Info' : 'Episode Info'}
             </ThemedText>
@@ -152,7 +157,6 @@ export default function PlayerScreen() {
               value={displayPosition}
               minimumValue={0}
               maximumValue={duration || 1}
-              tapToSeek
               onSlidingStart={() => {
                 wasPlayingBeforeSeekRef.current = status.playing;
                 if (status.playing) pause();

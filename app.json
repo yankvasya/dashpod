@@ -2,7 +2,7 @@
   "expo": {
     "name": "dashpod",
     "slug": "dashpod",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dashpod",
@@ -23,7 +23,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.REQUEST_INSTALL_PACKAGES"
       ],
       "package": "com.yankvasya.dashpod"
     },
@@ -58,7 +59,8 @@
       "router": {},
       "eas": {
         "projectId": "32e19733-272b-479a-ac0b-cab7c78c16c2"
-      }
+      },
+      "releaseStage": "alpha"
     },
     "owner": "yankvasya"
   }

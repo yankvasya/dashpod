@@ -9,8 +9,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import DownloadProgressBanner from '@/components/DownloadProgressBanner';
 import MiniPlayer from '@/components/player/MiniPlayer';
+import UpdateBanner from '@/components/UpdateBanner';
 import { BottomTabBarHeight, Spacing } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db/database';
+import { AppUpdateProvider } from '@/hooks/useAppUpdate';
 import { DownloadsProvider } from '@/hooks/useDownloads';
 import { PlayerProvider } from '@/hooks/usePlayer';
 import { QueueProvider } from '@/hooks/useQueue';
@@ -51,29 +53,32 @@ function RootLayoutContent() {
   return (
     <ThemeProvider value={themeId === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
-      <SubscriptionsProvider>
-        <DownloadsProvider>
-          <QueueProvider>
-            <PlayerProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="player" options={{ presentation: 'modal', headerShown: false }} />
-              </Stack>
-              {!isPlayerRouteOpen && (
-                <View
-                  style={[
-                    styles.miniPlayerContainer,
-                    { bottom: BottomTabBarHeight + insets.bottom + Spacing.one },
-                  ]}
-                  pointerEvents="box-none">
-                  <MiniPlayer />
-                </View>
-              )}
-              <DownloadProgressBanner />
-            </PlayerProvider>
-          </QueueProvider>
-        </DownloadsProvider>
-      </SubscriptionsProvider>
+      <AppUpdateProvider>
+        <SubscriptionsProvider>
+          <DownloadsProvider>
+            <QueueProvider>
+              <PlayerProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="player" options={{ presentation: 'modal', headerShown: false }} />
+                </Stack>
+                {!isPlayerRouteOpen && (
+                  <View
+                    style={[
+                      styles.miniPlayerContainer,
+                      { bottom: BottomTabBarHeight + insets.bottom + Spacing.one },
+                    ]}
+                    pointerEvents="box-none">
+                    <MiniPlayer />
+                  </View>
+                )}
+                <DownloadProgressBanner />
+              </PlayerProvider>
+            </QueueProvider>
+          </DownloadsProvider>
+        </SubscriptionsProvider>
+        <UpdateBanner />
+      </AppUpdateProvider>
     </ThemeProvider>
   );
 }

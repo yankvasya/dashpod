@@ -245,6 +245,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: 16,
+    // Android's TextInput carries built-in EditText padding that iOS's equivalent doesn't have,
+    // making the same layout look wider/taller there. Zero it so both platforms match.
+    padding: 0,
   },
   resultRow: {
     flexDirection: 'row',

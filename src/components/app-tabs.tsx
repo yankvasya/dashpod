@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { Colors, FontFamily } from '@/constants/theme';
 
 // One shared icon font (Ionicons) via expo-router's own VectorIcon helper, instead of the old
 // per-platform {sf, drawable} pairs — those `drawable` names never matched real Android
@@ -16,7 +16,10 @@ export default function AppTabs() {
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      labelStyle={{
+        default: { fontFamily: FontFamily.medium },
+        selected: { fontFamily: FontFamily.medium, color: colors.text },
+      }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon

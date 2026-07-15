@@ -2,7 +2,8 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, LayoutAnimation, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Reanimated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DescriptionText } from '@/components/DescriptionText';
@@ -50,6 +51,7 @@ export default function PlayerScreen() {
     setSleepTimerEndOfEpisode,
     cancelSleepTimer,
     isFadingOut,
+    setPlayerScreenOpen,
   } = usePlayer();
   const [seeking, setSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
@@ -70,6 +72,11 @@ export default function PlayerScreen() {
       router.back();
     }
   }, [nowPlaying, router]);
+
+  useEffect(() => {
+    setPlayerScreenOpen(true);
+    return () => setPlayerScreenOpen(false);
+  }, [setPlayerScreenOpen]);
 
   useEffect(() => {
     if (!isFadingOut) {
@@ -122,12 +129,7 @@ export default function PlayerScreen() {
               Close
             </ThemedText>
           </Pressable>
-          <Pressable
-            onPress={() => {
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              setShowInfo((value) => !value);
-            }}
-            hitSlop={8}>
+          <Pressable onPress={() => setShowInfo((value) => !value)} hitSlop={8}>
             <ThemedText type="smallBold" themeColor="textSecondary">
               {showInfo ? 'Hide Info' : 'Episode Info'}
             </ThemedText>
@@ -144,15 +146,21 @@ export default function PlayerScreen() {
           </ThemedText>
 
           {showInfo && (
-            <DescriptionText
-              html={nowPlaying.episode.description}
-              type="small"
-              themeColor="textSecondary"
-              style={styles.description}
-            />
+            <Reanimated.View
+              entering={FadeIn.duration(250)}
+              exiting={FadeOut.duration(200)}
+              layout={LinearTransition.duration(250)}
+              style={styles.descriptionWrap}>
+              <DescriptionText
+                html={nowPlaying.episode.description}
+                type="small"
+                themeColor="textSecondary"
+                style={styles.description}
+              />
+            </Reanimated.View>
           )}
 
-          <View style={styles.sliderSection}>
+          <Reanimated.View layout={LinearTransition.duration(250)} style={styles.sliderSection}>
             <Slider
               value={displayPosition}
               minimumValue={0}
@@ -183,7 +191,7 @@ export default function PlayerScreen() {
                 </ThemedText>
               </Pressable>
             </ThemedView>
-          </View>
+          </Reanimated.View>
 
           <ThemedView style={styles.settingsRow}>
             <Pressable
@@ -316,6 +324,9 @@ const styles = StyleSheet.create({
   },
   centerText: {
     textAlign: 'center',
+  },
+  descriptionWrap: {
+    alignSelf: 'stretch',
   },
   description: {
     alignSelf: 'stretch',

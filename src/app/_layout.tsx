@@ -1,3 +1,4 @@
+import { Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
@@ -28,10 +29,17 @@ export default function RootLayout() {
   // doesn't, so the mini player stayed visible and tappable there — each tap pushed another
   // "player" screen onto the stack. Hide it explicitly whenever that route is active.
   const isPlayerRouteOpen = usePathname() === '/player';
+  // Bundled instead of relying on each platform's system font (San Francisco vs Roboto), so text
+  // renders identically everywhere — see FontFamily in constants/theme.ts. Keep the native splash
+  // screen up (already held by preventAutoHideAsync above) until these are ready, so there's no
+  // flash of the system font before the custom one swaps in.
+  const [fontsLoaded] = useFonts({ Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
 
   useEffect(() => {
     configureAudioSession();
   }, []);
+
+  if (!fontsLoaded) return null;
 
   return (
     <GestureHandlerRootView style={styles.root}>

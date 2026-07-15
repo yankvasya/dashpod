@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PodcastDetailView } from '@/components/PodcastDetailView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { BottomTabInset, FontFamily, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePodcastDetailNavigation } from '@/hooks/usePodcastDetailNavigation';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
@@ -243,6 +243,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    fontFamily: FontFamily.medium,
     fontSize: 16,
   },
   resultRow: {

@@ -55,6 +55,14 @@ export const Fonts = Platform.select({
   },
 });
 
+/** Bundled Inter weights (see ThemedText) — used everywhere instead of the OS system font
+ * (San Francisco on iOS, Roboto on Android) so text renders identically on every platform. */
+export const FontFamily = {
+  medium: 'Inter_500Medium',
+  semiBold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+} as const;
+
 export const Spacing = {
   half: 2,
   one: 4,

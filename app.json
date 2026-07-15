@@ -48,7 +48,8 @@
           "enableBackgroundPlayback": true,
           "enableBackgroundRecording": false
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

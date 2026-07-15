@@ -1,5 +1,5 @@
 import { Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useEffect } from 'react';
@@ -13,7 +13,7 @@ import MiniPlayer from '@/components/player/MiniPlayer';
 import { BottomTabBarHeight, Spacing } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db/database';
 import { DownloadsProvider } from '@/hooks/useDownloads';
-import { PlayerProvider } from '@/hooks/usePlayer';
+import { PlayerProvider, usePlayer } from '@/hooks/usePlayer';
 import { QueueProvider } from '@/hooks/useQueue';
 import { SubscriptionsProvider } from '@/hooks/useSubscriptions';
 import { configureAudioSession } from '@/services/audio';
@@ -22,13 +22,6 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const insets = useSafeAreaInsets();
-  // MiniPlayer is rendered outside the Stack (so it overlays every tab), which means nothing
-  // stops it from also rendering on top of the "player" modal route. On iOS the native modal
-  // presentation happens to visually cover it regardless; Android's JS-driven modal transition
-  // doesn't, so the mini player stayed visible and tappable there — each tap pushed another
-  // "player" screen onto the stack. Hide it explicitly whenever that route is active.
-  const isPlayerRouteOpen = usePathname() === '/player';
   // Bundled instead of relying on each platform's system font (San Francisco vs Roboto), so text
   // renders identically everywhere — see FontFamily in constants/theme.ts. Keep the native splash
   // screen up (already held by preventAutoHideAsync above) until these are ready, so there's no
@@ -57,16 +50,7 @@ export default function RootLayout() {
                       options={{ presentation: 'modal', animation: 'slide_from_bottom', headerShown: false }}
                     />
                   </Stack>
-                  {!isPlayerRouteOpen && (
-                    <View
-                      style={[
-                        styles.miniPlayerContainer,
-                        { bottom: BottomTabBarHeight + insets.bottom + Spacing.one },
-                      ]}
-                      pointerEvents="box-none">
-                      <MiniPlayer />
-                    </View>
-                  )}
+                  <MiniPlayerHost />
                   <DownloadProgressBanner />
                 </PlayerProvider>
               </QueueProvider>
@@ -75,6 +59,29 @@ export default function RootLayout() {
         </ThemeProvider>
       </SQLiteProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/** MiniPlayer is rendered outside the Stack (so it overlays every tab), which means nothing
+ * stops it from also rendering on top of the "player" modal route. On iOS the native modal
+ * presentation happens to visually cover it regardless; Android's JS-driven modal transition
+ * doesn't, so the mini player stayed visible and tappable there. A pathname-based check
+ * (`usePathname() === '/player'`) didn't reliably catch this, so this reads whether the player
+ * screen is actually mounted directly off PlayerProvider instead — the real ground truth, set by
+ * player.tsx's own mount/unmount effect. Needs to live inside PlayerProvider to read it, hence
+ * its own component rather than being computed in RootLayout above. */
+function MiniPlayerHost() {
+  const insets = useSafeAreaInsets();
+  const { isPlayerScreenOpen } = usePlayer();
+
+  if (isPlayerScreenOpen) return null;
+
+  return (
+    <View
+      style={[styles.miniPlayerContainer, { bottom: BottomTabBarHeight + insets.bottom + Spacing.one }]}
+      pointerEvents="box-none">
+      <MiniPlayer />
+    </View>
   );
 }
 

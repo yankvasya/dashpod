@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { SectionList, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, SectionList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -29,6 +30,12 @@ export default function HistoryScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            Back
+          </ThemedText>
+        </Pressable>
+
         <ThemedText type="title" style={styles.title}>
           History
         </ThemedText>
@@ -82,6 +89,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  backButton: {
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.two,
   },
   title: {
     fontSize: 32,

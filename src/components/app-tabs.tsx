@@ -38,14 +38,9 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="list.bullet" drawable="queue_music" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="history">
-        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="clock" drawable="history" />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="stats">
-        <NativeTabs.Trigger.Label>Stats</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="chart.pie" drawable="pie_chart" />
+      <NativeTabs.Trigger name="more">
+        <NativeTabs.Trigger.Label>More</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="ellipsis" drawable="more_horiz" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
@@ -114,6 +115,12 @@ export default function StatsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            Back
+          </ThemedText>
+        </Pressable>
+
         <ThemedText type="title" style={styles.title}>
           Stats
         </ThemedText>
@@ -219,6 +226,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  backButton: {
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.two,
   },
   title: {
     fontSize: 32,

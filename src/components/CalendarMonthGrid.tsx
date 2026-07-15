@@ -70,11 +70,9 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
 
   return (
     <ModalSheet visible={visible} onClose={onClose} contentStyle={styles.sheet}>
-      {monthTotalMinutes > 0 && (
-        <ThemedText type="small" themeColor="textSecondary" style={styles.monthTotal}>
-          {formatDuration(monthTotalMinutes * 60)} listened this month
-        </ThemedText>
-      )}
+      <ThemedText type="small" themeColor="textSecondary" style={styles.monthTotal}>
+        {monthTotalMinutes > 0 ? `${formatDuration(monthTotalMinutes * 60)} listened this month` : ' '}
+      </ThemedText>
 
       <View style={styles.monthNav}>
         <Pressable

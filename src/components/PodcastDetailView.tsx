@@ -188,7 +188,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
               {hasId && (
                 <Pressable onPress={() => handleQueuePress(item as Episode)} hitSlop={8} style={styles.queueButton}>
                   <Ionicons
-                    name={queued ? 'checkmark-circle' : 'add-circle-outline'}
+                    name={queued ? 'checkmark-done-circle' : 'add-circle-outline'}
                     color={queued ? theme.accent : theme.textSecondary}
                     size={20}
                   />

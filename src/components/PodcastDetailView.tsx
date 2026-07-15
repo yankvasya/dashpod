@@ -1,6 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -177,13 +177,9 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
                   {downloading ? (
                     <ActivityIndicator size="small" color={theme.textSecondary} />
                   ) : (
-                    <SymbolView
-                      tintColor={downloaded ? theme.accent : theme.textSecondary}
-                      name={
-                        downloaded
-                          ? { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }
-                          : { ios: 'arrow.down.circle', android: 'file_download', web: 'file_download' }
-                      }
+                    <Ionicons
+                      name={downloaded ? 'checkmark-circle' : 'download-outline'}
+                      color={downloaded ? theme.accent : theme.textSecondary}
                       size={20}
                     />
                   )}
@@ -191,13 +187,9 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
               )}
               {hasId && (
                 <Pressable onPress={() => handleQueuePress(item as Episode)} hitSlop={8} style={styles.queueButton}>
-                  <SymbolView
-                    tintColor={queued ? theme.accent : theme.textSecondary}
-                    name={
-                      queued
-                        ? { ios: 'text.badge.checkmark', android: 'playlist_add_check', web: 'playlist_add_check' }
-                        : { ios: 'text.badge.plus', android: 'playlist_add', web: 'playlist_add' }
-                    }
+                  <Ionicons
+                    name={queued ? 'checkmark-circle' : 'add-circle-outline'}
+                    color={queued ? theme.accent : theme.textSecondary}
                     size={20}
                   />
                 </Pressable>

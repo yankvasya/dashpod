@@ -1,4 +1,4 @@
-import { SymbolView } from 'expo-symbols';
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ModalSheet } from '@/components/ModalSheet';
@@ -66,7 +66,7 @@ export function SleepTimerModal({
 
       {mode !== 'off' && (
         <Pressable onPress={onCancel} style={styles.deleteButton}>
-          <SymbolView tintColor={theme.danger} name={{ ios: 'trash', android: 'delete', web: 'delete' }} size={16} />
+          <Ionicons name="trash-outline" color={theme.danger} size={16} />
           <ThemedText type="smallBold" themeColor="danger">
             Delete Sleep Timer
           </ThemedText>

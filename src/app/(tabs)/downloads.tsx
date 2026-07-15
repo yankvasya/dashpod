@@ -1,6 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { Alert, FlatList, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -154,23 +154,15 @@ export default function DownloadsScreen() {
                   onPress={() => removeDownload(item.episodeId)}
                   hitSlop={8}
                   style={styles.deleteButton}>
-                  <SymbolView
-                    tintColor={theme.textSecondary}
-                    name={{ ios: 'trash', android: 'delete', web: 'delete' }}
-                    size={18}
-                  />
+                  <Ionicons name="trash-outline" color={theme.textSecondary} size={18} />
                 </Pressable>
                 <Pressable
                   onPress={() => handleQueuePress(item)}
                   hitSlop={8}
                   style={styles.queueButton}>
-                  <SymbolView
-                    tintColor={queued ? theme.accent : theme.textSecondary}
-                    name={
-                      queued
-                        ? { ios: 'text.badge.checkmark', android: 'playlist_add_check', web: 'playlist_add_check' }
-                        : { ios: 'text.badge.plus', android: 'playlist_add', web: 'playlist_add' }
-                    }
+                  <Ionicons
+                    name={queued ? 'checkmark-circle' : 'add-circle-outline'}
+                    color={queued ? theme.accent : theme.textSecondary}
                     size={18}
                   />
                 </Pressable>

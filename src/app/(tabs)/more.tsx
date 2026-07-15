@@ -1,5 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,8 +9,8 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const MORE_ITEMS = [
-  { href: '/history', label: 'History', sf: 'clock', drawable: 'history' },
-  { href: '/stats', label: 'Stats', sf: 'chart.pie', drawable: 'pie_chart' },
+  { href: '/history', label: 'History', icon: 'time-outline' },
+  { href: '/stats', label: 'Stats', icon: 'pie-chart-outline' },
 ] as const;
 
 export default function MoreScreen() {
@@ -32,17 +32,9 @@ export default function MoreScreen() {
                 styles.row,
                 index > 0 && [styles.rowBorder, { borderColor: theme.backgroundSelected }],
               ]}>
-              <SymbolView
-                tintColor={theme.text}
-                name={{ ios: item.sf, android: item.drawable, web: item.drawable }}
-                size={20}
-              />
+              <Ionicons name={item.icon} color={theme.text} size={20} />
               <ThemedText style={styles.rowLabel}>{item.label}</ThemedText>
-              <SymbolView
-                tintColor={theme.textSecondary}
-                name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-                size={16}
-              />
+              <Ionicons name="chevron-forward-outline" color={theme.textSecondary} size={16} />
             </Pressable>
           ))}
         </ThemedView>

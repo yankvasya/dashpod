@@ -1,7 +1,7 @@
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -197,9 +197,9 @@ export default function PlayerScreen() {
                 { backgroundColor: sleepTimer.mode !== 'off' || isFadingOut ? theme.accent : theme.backgroundElement },
               ]}>
               <Animated.View style={[styles.sleepTimerContent, { opacity: fadePulseAnim }]}>
-                <SymbolView
-                  tintColor={sleepTimer.mode !== 'off' || isFadingOut ? theme.background : theme.text}
-                  name={{ ios: 'moon.zzz', android: 'bedtime', web: 'bedtime' }}
+                <Ionicons
+                  name="moon-outline"
+                  color={sleepTimer.mode !== 'off' || isFadingOut ? theme.background : theme.text}
                   size={16}
                 />
                 {isFadingOut ? (
@@ -226,19 +226,11 @@ export default function PlayerScreen() {
 
           <ThemedView style={styles.controlsRow}>
             <Pressable onPress={skipToPrevious} hitSlop={8} style={styles.nextButton}>
-              <SymbolView
-                tintColor={theme.text}
-                name={{ ios: 'backward.end.fill', android: 'skip_previous', web: 'skip_previous' }}
-                size={26}
-              />
+              <Ionicons name="play-skip-back" color={theme.text} size={26} />
             </Pressable>
 
             <Pressable onPress={() => skipBy(-SKIP_SECONDS)} hitSlop={8} style={styles.skipButton}>
-              <SymbolView
-                tintColor={theme.text}
-                name={{ ios: 'gobackward.10', android: 'replay_10', web: 'replay_10' }}
-                size={26}
-              />
+              <MaterialIcons name="replay-10" color={theme.text} size={26} />
             </Pressable>
 
             <Pressable
@@ -253,19 +245,11 @@ export default function PlayerScreen() {
             </Pressable>
 
             <Pressable onPress={() => skipBy(SKIP_SECONDS)} hitSlop={8} style={styles.skipButton}>
-              <SymbolView
-                tintColor={theme.text}
-                name={{ ios: 'goforward.10', android: 'forward_10', web: 'forward_10' }}
-                size={26}
-              />
+              <MaterialIcons name="forward-10" color={theme.text} size={26} />
             </Pressable>
 
             <Pressable onPress={skipToNext} disabled={!hasNext} hitSlop={8} style={styles.nextButton}>
-              <SymbolView
-                tintColor={hasNext ? theme.text : theme.backgroundSelected}
-                name={{ ios: 'forward.end.fill', android: 'skip_next', web: 'skip_next' }}
-                size={26}
-              />
+              <Ionicons name="play-skip-forward" color={hasNext ? theme.text : theme.backgroundSelected} size={26} />
             </Pressable>
           </ThemedView>
         </ScrollView>

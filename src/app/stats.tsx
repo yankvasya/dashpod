@@ -1,6 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
@@ -86,9 +86,9 @@ export default function StatsScreen() {
               ].join(' · ')}
             </ThemedText>
           </ThemedView>
-          <SymbolView
-            tintColor={theme.textSecondary}
-            name={{ ios: expanded ? 'chevron.up' : 'chevron.down', android: 'expand_more', web: 'expand_more' }}
+          <Ionicons
+            name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+            color={theme.textSecondary}
             size={16}
           />
         </Pressable>
@@ -153,13 +153,7 @@ export default function StatsScreen() {
               disabled={period.type !== 'day'}
               style={styles.navLabel}>
               <ThemedText type="smallBold">{getPeriodLabel(period)}</ThemedText>
-              {period.type === 'day' && (
-                <SymbolView
-                  tintColor={theme.textSecondary}
-                  name={{ ios: 'calendar', android: 'calendar_today', web: 'calendar_today' }}
-                  size={14}
-                />
-              )}
+              {period.type === 'day' && <Ionicons name="calendar-outline" color={theme.textSecondary} size={14} />}
             </Pressable>
             <Pressable
               onPress={() => canGoNext && setPeriod(shiftPeriod(period, 1))}

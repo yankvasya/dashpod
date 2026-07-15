@@ -1,21 +1,45 @@
+import Constants from 'expo-constants';
 import { SymbolView } from 'expo-symbols';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
+import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings, type AppThemeId } from '@/hooks/useSettings';
+import { getCurrentBuildNumber } from '@/services/updateCheck';
 
 const THEME_OPTIONS: { id: AppThemeId; label: string }[] = [
   { id: 'light', label: 'Light' },
   { id: 'dark', label: 'Dark Purple' },
 ];
 
+type CheckResult = 'idle' | 'upToDate' | { version: string; stage: string };
+
+const appVersion = Constants.expoConfig?.version ?? 'unknown';
+const releaseStage = (Constants.expoConfig?.extra?.releaseStage as string | undefined) ?? 'dev';
+
 export default function SettingsScreen() {
   const theme = useTheme();
-  const { themeId, setThemeId, allowMobileDataDownloads, setAllowMobileDataDownloads } = useSettings();
+  const {
+    themeId,
+    setThemeId,
+    allowMobileDataDownloads,
+    setAllowMobileDataDownloads,
+    autoCheckForUpdates,
+    setAutoCheckForUpdates,
+  } = useSettings();
+  const { checkNow, checking } = useAppUpdate();
+  const [checkResult, setCheckResult] = useState<CheckResult>('idle');
+  const buildNumber = getCurrentBuildNumber();
+
+  async function handleCheckNow() {
+    const result = await checkNow();
+    setCheckResult(result ? { version: result.version, stage: result.stage } : 'upToDate');
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -61,6 +85,38 @@ export default function SettingsScreen() {
                 trackColor={{ true: theme.accent }}
               />
             </View>
+          </ThemedView>
+
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+            Updates
+          </ThemedText>
+          <ThemedView type="backgroundElement" style={styles.section}>
+            <View style={styles.row}>
+              <ThemedText style={styles.switchLabel}>
+                {buildNumber > 0
+                  ? `Version ${appVersion} (${releaseStage}) · Build ${buildNumber}`
+                  : `Version ${appVersion} (${releaseStage}) · Local build`}
+              </ThemedText>
+            </View>
+            <View style={[styles.row, styles.rowBorder, { borderColor: theme.backgroundSelected }]}>
+              <ThemedText style={styles.switchLabel}>Automatically Check for Updates</ThemedText>
+              <Switch
+                value={autoCheckForUpdates}
+                onValueChange={setAutoCheckForUpdates}
+                trackColor={{ true: theme.accent }}
+              />
+            </View>
+            <Pressable
+              onPress={handleCheckNow}
+              disabled={checking}
+              style={[styles.row, styles.rowBorder, { borderColor: theme.backgroundSelected }]}>
+              <ThemedText themeColor="accent">{checking ? 'Checking…' : 'Check for Updates'}</ThemedText>
+              {checkResult !== 'idle' && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {checkResult === 'upToDate' ? "You're up to date" : `v${checkResult.version} available`}
+                </ThemedText>
+              )}
+            </Pressable>
           </ThemedView>
         </ScrollView>
       </SafeAreaView>

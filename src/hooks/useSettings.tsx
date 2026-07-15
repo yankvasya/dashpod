@@ -10,9 +10,11 @@ export type AppThemeId = 'light' | 'dark';
 
 const THEME_KEY = 'themeId';
 const ALLOW_MOBILE_DATA_DOWNLOADS_KEY = 'allowMobileDataDownloads';
+const AUTO_CHECK_FOR_UPDATES_KEY = 'autoCheckForUpdates';
 const DEFAULT_THEME: AppThemeId = 'light';
 // Conservative default — most podcast apps default to WiFi-only downloads.
 const DEFAULT_ALLOW_MOBILE_DATA_DOWNLOADS = false;
+const DEFAULT_AUTO_CHECK_FOR_UPDATES = true;
 
 interface SettingsContextValue {
   loading: boolean;
@@ -20,6 +22,8 @@ interface SettingsContextValue {
   setThemeId: (themeId: AppThemeId) => void;
   allowMobileDataDownloads: boolean;
   setAllowMobileDataDownloads: (allow: boolean) => void;
+  autoCheckForUpdates: boolean;
+  setAutoCheckForUpdates: (autoCheck: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -33,6 +37,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [allowMobileDataDownloads, setAllowMobileDataDownloadsState] = useState(
     DEFAULT_ALLOW_MOBILE_DATA_DOWNLOADS
   );
+  const [autoCheckForUpdates, setAutoCheckForUpdatesState] = useState(DEFAULT_AUTO_CHECK_FOR_UPDATES);
 
   useEffect(() => {
     getAllSettings(db).then((settings) => {
@@ -41,6 +46,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }
       if (settings[ALLOW_MOBILE_DATA_DOWNLOADS_KEY] != null) {
         setAllowMobileDataDownloadsState(settings[ALLOW_MOBILE_DATA_DOWNLOADS_KEY] === '1');
+      }
+      if (settings[AUTO_CHECK_FOR_UPDATES_KEY] != null) {
+        setAutoCheckForUpdatesState(settings[AUTO_CHECK_FOR_UPDATES_KEY] === '1');
       }
       setLoading(false);
     });
@@ -62,9 +70,33 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [db]
   );
 
+  const setAutoCheckForUpdates = useCallback(
+    (autoCheck: boolean) => {
+      setAutoCheckForUpdatesState(autoCheck);
+      setSetting(db, AUTO_CHECK_FOR_UPDATES_KEY, autoCheck ? '1' : '0');
+    },
+    [db]
+  );
+
   const value = useMemo(
-    () => ({ loading, themeId, setThemeId, allowMobileDataDownloads, setAllowMobileDataDownloads }),
-    [loading, themeId, setThemeId, allowMobileDataDownloads, setAllowMobileDataDownloads]
+    () => ({
+      loading,
+      themeId,
+      setThemeId,
+      allowMobileDataDownloads,
+      setAllowMobileDataDownloads,
+      autoCheckForUpdates,
+      setAutoCheckForUpdates,
+    }),
+    [
+      loading,
+      themeId,
+      setThemeId,
+      allowMobileDataDownloads,
+      setAllowMobileDataDownloads,
+      autoCheckForUpdates,
+      setAutoCheckForUpdates,
+    ]
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

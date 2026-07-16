@@ -3,25 +3,27 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useEffect } from 'react';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import DownloadProgressBanner from '@/components/DownloadProgressBanner';
 import MiniPlayer from '@/components/player/MiniPlayer';
+import UpdateBanner from '@/components/UpdateBanner';
 import { BottomTabBarHeight, Spacing } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db/database';
+import { AppUpdateProvider } from '@/hooks/useAppUpdate';
 import { DownloadsProvider } from '@/hooks/useDownloads';
 import { PlayerProvider, usePlayer } from '@/hooks/usePlayer';
 import { QueueProvider } from '@/hooks/useQueue';
+import { SettingsProvider, useSettings } from '@/hooks/useSettings';
 import { SubscriptionsProvider } from '@/hooks/useSubscriptions';
 import { configureAudioSession } from '@/services/audio';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   // Bundled instead of relying on each platform's system font (San Francisco vs Roboto), so text
   // renders identically everywhere — see FontFamily in constants/theme.ts. Keep the native splash
   // screen up (already held by preventAutoHideAsync above) until these are ready, so there's no
@@ -37,28 +39,43 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SQLiteProvider databaseName="dashpod.db" onInit={migrateDbIfNeeded}>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <AnimatedSplashOverlay />
-          <SubscriptionsProvider>
-            <DownloadsProvider>
-              <QueueProvider>
-                <PlayerProvider>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen
-                      name="player"
-                      options={{ presentation: 'modal', animation: 'slide_from_bottom', headerShown: false }}
-                    />
-                  </Stack>
-                  <MiniPlayerHost />
-                  <DownloadProgressBanner />
-                </PlayerProvider>
-              </QueueProvider>
-            </DownloadsProvider>
-          </SubscriptionsProvider>
-        </ThemeProvider>
+        <SettingsProvider>
+          <RootLayoutContent />
+        </SettingsProvider>
       </SQLiteProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/** Split out from RootLayout so it can read the user's chosen theme (Settings screen) via
+ * useSettings — that hook needs SettingsProvider above it, which itself needs SQLiteProvider. */
+function RootLayoutContent() {
+  const { themeId } = useSettings();
+
+  return (
+    <ThemeProvider value={themeId === 'dark' ? DarkTheme : DefaultTheme}>
+      <AnimatedSplashOverlay />
+      <AppUpdateProvider>
+        <SubscriptionsProvider>
+          <DownloadsProvider>
+            <QueueProvider>
+              <PlayerProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen
+                    name="player"
+                    options={{ presentation: 'modal', animation: 'slide_from_bottom', headerShown: false }}
+                  />
+                </Stack>
+                <MiniPlayerHost />
+                <DownloadProgressBanner />
+              </PlayerProvider>
+            </QueueProvider>
+          </DownloadsProvider>
+        </SubscriptionsProvider>
+        <UpdateBanner />
+      </AppUpdateProvider>
+    </ThemeProvider>
   );
 }
 

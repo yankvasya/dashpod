@@ -1,3 +1,4 @@
+import * as Network from 'expo-network';
 import { useSQLiteContext } from 'expo-sqlite';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -9,8 +10,16 @@ import {
   getDownloads,
   insertDownload,
 } from '@/db/queries';
+import { useSettings } from '@/hooks/useSettings';
 import { deleteDownloadedFile, downloadEpisodeFile } from '@/services/downloads';
 import type { DownloadedEpisode, Episode } from '@/types/podcast';
+
+export class MobileDataDownloadBlockedError extends Error {
+  constructor() {
+    super('Downloads over mobile data are turned off. Enable it in Settings, or connect to Wi-Fi.');
+    this.name = 'MobileDataDownloadBlockedError';
+  }
+}
 
 /** Live progress for a download in flight, keyed by episode id. */
 export interface DownloadProgress {
@@ -39,6 +48,7 @@ const DownloadsContext = createContext<DownloadsContextValue | null>(null);
 /** Wraps the app so every screen (episode rows, Downloads tab) shares one downloads list. */
 export function DownloadsProvider({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
+  const { allowMobileDataDownloads } = useSettings();
   const [downloads, setDownloads] = useState<DownloadedEpisode[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingEpisodeIds, setDownloadingEpisodeIds] = useState<Set<number>>(new Set());
@@ -70,6 +80,12 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
 
   const downloadEpisode = useCallback(
     async (episode: Episode, podcastTitle: string) => {
+      if (!allowMobileDataDownloads) {
+        const state = await Network.getNetworkStateAsync();
+        if (state.type === Network.NetworkStateType.CELLULAR) {
+          throw new MobileDataDownloadBlockedError();
+        }
+      }
       setDownloadingEpisodeIds((prev) => new Set(prev).add(episode.id));
       setDownloadProgress((prev) => {
         const next = new Map(prev);
@@ -103,7 +119,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [db, refresh]
+    [db, refresh, allowMobileDataDownloads]
   );
 
   const removeDownload = useCallback(

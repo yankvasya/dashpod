@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DescriptionText } from '@/components/DescriptionText';
@@ -9,7 +9,7 @@ import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
-import { useDownloads } from '@/hooks/useDownloads';
+import { MobileDataDownloadBlockedError, useDownloads } from '@/hooks/useDownloads';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayer } from '@/hooks/usePlayer';
 import { usePodcastDetail } from '@/hooks/usePodcastDetail';
@@ -73,7 +73,15 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
     if (isDownloaded(episode.id)) {
       await removeDownload(episode.id);
     } else if (podcast) {
-      await downloadEpisode(episode, podcast.title);
+      try {
+        await downloadEpisode(episode, podcast.title);
+      } catch (error) {
+        if (error instanceof MobileDataDownloadBlockedError) {
+          Alert.alert('Mobile Data Downloads Off', error.message);
+        } else {
+          throw error;
+        }
+      }
     }
   }
 

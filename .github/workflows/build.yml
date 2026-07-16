@@ -15,6 +15,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Read app version and release stage
+        id: version
+        run: |
+          echo "version=$(jq -r '.expo.version' app.json)" >> "$GITHUB_OUTPUT"
+          echo "stage=$(jq -r '.expo.extra.releaseStage' app.json)" >> "$GITHUB_OUTPUT"
+          echo "stage_title=$(jq -r '.expo.extra.releaseStage' app.json | sed 's/./\U&/')" >> "$GITHUB_OUTPUT"
+
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
@@ -31,6 +38,15 @@ jobs:
           packager: npm
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Embed build number for in-app update checks
+        # Written into the checked-out eas.json for this run only — not committed back to the
+        # repo. The running app reads it back via process.env.EXPO_PUBLIC_BUILD_NUMBER to compare
+        # its own build against the latest GitHub release when checking for updates.
+        run: |
+          jq --arg build "${{ github.run_number }}" \
+            '.build.preview.env.EXPO_PUBLIC_BUILD_NUMBER = $build' eas.json > eas.json.tmp
+          mv eas.json.tmp eas.json
+
       - name: Build Android APK on EAS
         id: build
         run: |
@@ -38,12 +54,17 @@ jobs:
           echo "build_url=$(jq -r '.[0].artifacts.buildUrl' build-output.json)" >> "$GITHUB_OUTPUT"
 
       - name: Download APK
-        run: curl -L -o dashpod.apk "${{ steps.build.outputs.build_url }}"
+        run: |
+          apk_name="dashpod-${{ steps.version.outputs.version }}-${{ steps.version.outputs.stage }}.apk"
+          curl -L -o "$apk_name" "${{ steps.build.outputs.build_url }}"
+          echo "apk_name=$apk_name" >> "$GITHUB_ENV"
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          files: dashpod.apk
+          tag_name: v${{ steps.version.outputs.version }}-${{ steps.version.outputs.stage }}.${{ github.run_number }}
+          name: >-
+            Dashpod ${{ steps.version.outputs.version }}
+            (${{ steps.version.outputs.stage_title }}) — Build ${{ github.run_number }}
+          files: ${{ env.apk_name }}
           make_latest: true

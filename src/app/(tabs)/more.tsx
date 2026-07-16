@@ -4,23 +4,25 @@ import { BackHandler, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HistoryView } from '@/components/HistoryView';
+import { SettingsView } from '@/components/SettingsView';
 import { StatsView } from '@/components/StatsView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-type Section = 'history' | 'stats' | null;
+type Section = 'history' | 'stats' | 'settings' | null;
 
 const MORE_ITEMS = [
   { key: 'history', label: 'History', icon: 'time-outline' },
   { key: 'stats', label: 'Stats', icon: 'pie-chart-outline' },
+  { key: 'settings', label: 'Settings', icon: 'settings-outline' },
 ] as const;
 
-/** History/Stats render in place here (not routed pushes) — pushing them as root-level Stack
- * screens from within NativeTabs turned out unreliable (inconsistent open behavior across
- * platforms), so this follows the same proven local-state + Back pattern already used for
- * PodcastDetailView instead. */
+/** History/Stats/Settings render in place here (not routed pushes) — the tab bar only has room
+ * for 5 real tabs, and pushing these as root-level Stack screens from within the tab navigator
+ * turned out unreliable (inconsistent open behavior across platforms), so this follows the same
+ * proven local-state + Back pattern already used for PodcastDetailView instead. */
 export default function MoreScreen() {
   const theme = useTheme();
   const [section, setSection] = useState<Section>(null);
@@ -41,6 +43,7 @@ export default function MoreScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {section === 'history' && <HistoryView onBack={() => setSection(null)} />}
         {section === 'stats' && <StatsView onBack={() => setSection(null)} />}
+        {section === 'settings' && <SettingsView onBack={() => setSection(null)} />}
         {!section && (
           <>
             <ThemedText type="title" style={styles.title}>

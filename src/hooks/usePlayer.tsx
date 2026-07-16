@@ -46,6 +46,7 @@ function toPlayableEpisode(item: QueuedEpisode): PlayableEpisode {
     durationSeconds: item.durationSeconds,
     publishedAt: item.publishedAt,
     artworkUrl: item.artworkUrl,
+    fileSizeBytes: null,
   };
 }
 

@@ -15,6 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePlayer } from '@/hooks/usePlayer';
 import { usePodcastDetail } from '@/hooks/usePodcastDetail';
 import { useQueue } from '@/hooks/useQueue';
+import { formatFileSize } from '@/services/downloads';
 import type { Episode } from '@/types/podcast';
 import { formatDate, formatDuration, formatProgress } from '@/utils/format';
 
@@ -195,7 +196,13 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
               <Pressable style={styles.episodeText} onPress={() => handleViewEpisode(item)}>
                 <ThemedText numberOfLines={2}>{item.title}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {[formatDate(item.publishedAt), durationLabel].filter(Boolean).join(' · ')}
+                  {[
+                    formatDate(item.publishedAt),
+                    durationLabel,
+                    !downloaded && item.fileSizeBytes ? formatFileSize(item.fileSizeBytes) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </ThemedText>
               </Pressable>
               {hasId && (

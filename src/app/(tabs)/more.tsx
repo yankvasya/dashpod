@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { BackHandler, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,16 +28,21 @@ export default function MoreScreen() {
   const theme = useTheme();
   const [section, setSection] = useState<Section>(null);
 
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (section) {
-        setSection(null);
-        return true;
-      }
-      return false;
-    });
-    return () => subscription.remove();
-  }, [section]);
+  // useFocusEffect (not a plain useEffect) so this listener is only live while More is actually
+  // focused — see usePodcastDetailNavigation.ts for why that matters on Android.
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (section) {
+          setSection(null);
+          return true;
+        }
+        return false;
+      });
+      return () => subscription.remove();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [section])
+  );
 
   return (
     <ThemedView style={styles.container}>

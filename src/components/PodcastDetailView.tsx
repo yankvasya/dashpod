@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useRef } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,6 +29,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList<Episode | Omit<Episode, 'id' | 'podcastId'>>>(null);
   const {
     podcast,
     episodes,
@@ -57,14 +59,24 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
         play();
       }
     } else if (podcast) {
-      await loadEpisode(resolveForPlayback(episode), podcast.title, podcast.artworkUrl);
+      await loadEpisode(
+        resolveForPlayback(episode),
+        podcast.title,
+        podcast.artworkUrl,
+        'id' in podcast ? podcast.id : null
+      );
       play();
     }
   }
 
   function handleViewEpisode(episode: (typeof episodes)[number]) {
     if (nowPlaying?.episode.guid !== episode.guid && podcast) {
-      loadEpisode(resolveForPlayback(episode), podcast.title, podcast.artworkUrl);
+      loadEpisode(
+        resolveForPlayback(episode),
+        podcast.title,
+        podcast.artworkUrl,
+        'id' in podcast ? podcast.id : null
+      );
     }
     router.push('/player');
   }
@@ -101,9 +113,19 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
             Back
           </ThemedText>
         </Pressable>
+        <Pressable
+          onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
+          hitSlop={8}
+          style={styles.upButton}>
+          <Ionicons name="arrow-up-outline" color={theme.textSecondary} size={16} />
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            Up
+          </ThemedText>
+        </Pressable>
       </ThemedView>
 
       <FlatList
+        ref={listRef}
         data={episodes}
         keyExtractor={(item) => item.guid}
         contentContainerStyle={[
@@ -220,11 +242,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
   },
   backButton: {
     alignSelf: 'flex-start',
+  },
+  upButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
   },
   listContent: {
     paddingHorizontal: Spacing.four,

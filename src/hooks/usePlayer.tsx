@@ -16,6 +16,9 @@ interface NowPlaying {
   episode: PlayableEpisode;
   podcastTitle: string;
   podcastArtworkUrl: string;
+  /** Null for episodes previewed straight from search results, before subscribing — there's no
+   * podcast row to navigate to yet in that case. */
+  podcastId: number | null;
 }
 
 interface ListeningSegment {
@@ -53,7 +56,12 @@ interface PlayerContextValue {
    * explicitly rather than derived from `status`, since native status events lag a beat behind
    * our own state updates. */
   episodeLoading: boolean;
-  loadEpisode: (episode: PlayableEpisode, podcastTitle: string, podcastArtworkUrl: string) => Promise<void>;
+  loadEpisode: (
+    episode: PlayableEpisode,
+    podcastTitle: string,
+    podcastArtworkUrl: string,
+    podcastId: number | null
+  ) => Promise<void>;
   play: () => void;
   pause: () => void;
   seekTo: (seconds: number) => Promise<void>;
@@ -183,7 +191,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   );
 
   const loadEpisode = useCallback(
-    async (episode: PlayableEpisode, podcastTitle: string, podcastArtworkUrl: string) => {
+    async (episode: PlayableEpisode, podcastTitle: string, podcastArtworkUrl: string, podcastId: number | null) => {
       // Whatever was playing becomes "previous" — captured before it's replaced below.
       if (nowPlayingRef.current) {
         previousEpisodeRef.current = nowPlayingRef.current;
@@ -205,7 +213,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         // either way — cheap to just re-apply the selected rate on every load.
         player.setPlaybackRate(rateRef.current);
       }
-      setNowPlaying({ episode, podcastTitle, podcastArtworkUrl });
+      setNowPlaying({ episode, podcastTitle, podcastArtworkUrl, podcastId });
       if (episode.id != null) {
         // Resume-position lookup runs in the background rather than being awaited here — the
         // caller's play() (for the play-pause-button path) fires right after this resolves, and
@@ -268,9 +276,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     queue.markPlayed(next.episodeId);
     const localUri = downloads.getDownloadedUri(next.episodeId);
     const episode = toPlayableEpisode(next);
-    loadEpisode(localUri ? { ...episode, audioUrl: localUri } : episode, next.podcastTitle, next.artworkUrl).then(
-      () => play()
-    );
+    loadEpisode(
+      localUri ? { ...episode, audioUrl: localUri } : episode,
+      next.podcastTitle,
+      next.artworkUrl,
+      next.podcastId
+    ).then(() => play());
   }, [queue, nowPlaying, downloads, loadEpisode, play]);
   skipToNextRef.current = skipToNext;
 
@@ -284,7 +295,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seekTo(0);
       return;
     }
-    loadEpisode(previous.episode, previous.podcastTitle, previous.podcastArtworkUrl).then(() => play());
+    loadEpisode(previous.episode, previous.podcastTitle, previous.podcastArtworkUrl, previous.podcastId).then(() =>
+      play()
+    );
   }, [status.currentTime, seekTo, loadEpisode, play]);
 
   const [sleepTimer, setSleepTimer] = useState<SleepTimerState>({ mode: 'off', remainingSeconds: null });

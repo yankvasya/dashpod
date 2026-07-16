@@ -33,6 +33,8 @@ export function Slider({
   maximumTrackTintColor,
   thumbTintColor,
 }: SliderProps) {
+  const containerRef = useRef<View>(null);
+  const containerPageXRef = useRef(0);
   const [trackWidth, setTrackWidth] = useState(0);
   const trackWidthRef = useRef(0);
 
@@ -42,10 +44,17 @@ export function Slider({
     return next;
   }
 
-  function valueFromLocationX(locationX: number) {
+  // Screen-relative (pageX) math throughout, not `event.nativeEvent.locationX` — React Native's
+  // own docs flag locationX as unreliable specifically on release/terminate (it can report the
+  // touch's start position instead of where it actually ended), which was producing the "seek
+  // jumps back to roughly where you started, then back to where you tapped" jitter on streaming
+  // episodes: onSlidingComplete's value didn't match where the user actually released, so the
+  // held-position logic in player.tsx was chasing the wrong target.
+  function valueFromPageX(pageX: number) {
     const width = trackWidthRef.current;
     if (width <= 0 || maximumValue <= minimumValue) return value;
-    const fraction = Math.min(1, Math.max(0, (locationX - THUMB_SIZE / 2) / width));
+    const localX = pageX - containerPageXRef.current;
+    const fraction = Math.min(1, Math.max(0, (localX - THUMB_SIZE / 2) / width));
     return clampToRange(minimumValue + fraction * (maximumValue - minimumValue));
   }
 
@@ -54,18 +63,18 @@ export function Slider({
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (event) => {
+        onPanResponderGrant: (_event, gestureState) => {
           onSlidingStart?.();
-          onValueChange?.(valueFromLocationX(event.nativeEvent.locationX));
+          onValueChange?.(valueFromPageX(gestureState.x0));
         },
-        onPanResponderMove: (event) => {
-          onValueChange?.(valueFromLocationX(event.nativeEvent.locationX));
+        onPanResponderMove: (_event, gestureState) => {
+          onValueChange?.(valueFromPageX(gestureState.moveX));
         },
-        onPanResponderRelease: (event) => {
-          onSlidingComplete?.(valueFromLocationX(event.nativeEvent.locationX));
+        onPanResponderRelease: (_event, gestureState) => {
+          onSlidingComplete?.(valueFromPageX(gestureState.moveX));
         },
-        onPanResponderTerminate: (event) => {
-          onSlidingComplete?.(valueFromLocationX(event.nativeEvent.locationX));
+        onPanResponderTerminate: (_event, gestureState) => {
+          onSlidingComplete?.(valueFromPageX(gestureState.moveX));
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }),
@@ -76,6 +85,9 @@ export function Slider({
     const width = Math.max(0, event.nativeEvent.layout.width - THUMB_SIZE);
     trackWidthRef.current = width;
     setTrackWidth(width);
+    containerRef.current?.measureInWindow((x) => {
+      containerPageXRef.current = x;
+    });
   }
 
   const progress =
@@ -83,7 +95,7 @@ export function Slider({
   const thumbOffset = trackWidth * progress;
 
   return (
-    <View style={styles.container} onLayout={handleLayout} {...panResponder.panHandlers}>
+    <View ref={containerRef} style={styles.container} onLayout={handleLayout} {...panResponder.panHandlers}>
       <View style={[styles.track, { backgroundColor: maximumTrackTintColor }]} />
       <View
         style={[

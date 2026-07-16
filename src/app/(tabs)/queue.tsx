@@ -52,14 +52,14 @@ export default function QueueScreen() {
       // markPlayed (not removeEpisode) so it shows up in "Played" — the user is starting this
       // queued episode directly, same as if playback had auto-advanced to it.
       markPlayed(item.episodeId);
-      await loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl);
+      await loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
       play();
     }
   }
 
   function handleViewEpisode(item: QueuedEpisode) {
     if (nowPlaying?.episode.id !== item.episodeId) {
-      loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl);
+      loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
     }
     router.push('/player');
   }

@@ -51,14 +51,14 @@ export default function DownloadsScreen() {
         play();
       }
     } else {
-      await loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl);
+      await loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
       play();
     }
   }
 
   function handleViewEpisode(item: DownloadedEpisode) {
     if (nowPlaying?.episode.id !== item.episodeId) {
-      loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl);
+      loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
     }
     router.push('/player');
   }

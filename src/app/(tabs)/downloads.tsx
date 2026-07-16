@@ -149,7 +149,7 @@ export default function DownloadsScreen() {
                 <Pressable
                   onPress={() => handleQueuePress(item)}
                   hitSlop={8}
-                  style={[styles.iconButton, { backgroundColor: queued ? theme.accent : theme.backgroundElement }]}>
+                  style={[styles.iconButton, { backgroundColor: queued ? theme.accent : 'transparent' }]}>
                   <Ionicons name="list-outline" color={queued ? theme.background : theme.textSecondary} size={18} />
                 </Pressable>
                 <EpisodePlayButton

@@ -173,7 +173,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
                   onPress={() => handleDownloadPress(item as Episode)}
                   disabled={downloading}
                   hitSlop={8}
-                  style={[styles.iconButton, { backgroundColor: downloaded ? theme.accent : theme.backgroundElement }]}>
+                  style={[styles.iconButton, { backgroundColor: downloaded ? theme.accent : 'transparent' }]}>
                   {downloading ? (
                     <ActivityIndicator size="small" color={theme.textSecondary} />
                   ) : (
@@ -189,7 +189,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
                 <Pressable
                   onPress={() => handleQueuePress(item as Episode)}
                   hitSlop={8}
-                  style={[styles.iconButton, { backgroundColor: queued ? theme.accent : theme.backgroundElement }]}>
+                  style={[styles.iconButton, { backgroundColor: queued ? theme.accent : 'transparent' }]}>
                   <Ionicons name="list-outline" color={queued ? theme.background : theme.textSecondary} size={18} />
                 </Pressable>
               )}

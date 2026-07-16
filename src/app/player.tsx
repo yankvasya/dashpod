@@ -11,12 +11,14 @@ import { LoadingRing } from '@/components/player/LoadingRing';
 import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
 import { formatSleepTimerRemaining, SleepTimerModal } from '@/components/player/SleepTimerModal';
 import { formatSpeed, SpeedModal } from '@/components/player/SpeedModal';
+import { ShimmerView } from '@/components/ShimmerView';
 import { Slider } from '@/components/Slider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayer } from '@/hooks/usePlayer';
+import { useSubscriptions } from '@/hooks/useSubscriptions';
 
 const SKIP_SECONDS = 10;
 
@@ -53,12 +55,14 @@ export default function PlayerScreen() {
     isFadingOut,
     setPlayerScreenOpen,
   } = usePlayer();
+  const { subscriptions } = useSubscriptions();
   const [seeking, setSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const [showRemaining, setShowRemaining] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [speedModalVisible, setSpeedModalVisible] = useState(false);
   const [sleepTimerModalVisible, setSleepTimerModalVisible] = useState(false);
+  const [artworkLoaded, setArtworkLoaded] = useState(false);
   const wasPlayingBeforeSeekRef = useRef(false);
   // seekTo()'s promise resolves once the seek command is issued, not once a remote/streaming
   // source has actually finished re-buffering to that position — so status.currentTime can still
@@ -77,6 +81,11 @@ export default function PlayerScreen() {
     setPlayerScreenOpen(true);
     return () => setPlayerScreenOpen(false);
   }, [setPlayerScreenOpen]);
+
+  const currentArtworkUrl = nowPlaying?.episode.artworkUrl ?? nowPlaying?.podcastArtworkUrl;
+  useEffect(() => {
+    setArtworkLoaded(false);
+  }, [currentArtworkUrl]);
 
   useEffect(() => {
     if (!isFadingOut) {
@@ -120,6 +129,13 @@ export default function PlayerScreen() {
     commitSeek(Math.min(Math.max(status.currentTime + deltaSeconds, 0), upperBound));
   }
 
+  const podcastFeedUrl = subscriptions.find((podcast) => podcast.id === nowPlaying.podcastId)?.feedUrl;
+
+  function goToPodcast() {
+    if (!podcastFeedUrl) return;
+    router.push({ pathname: '/my-podcasts', params: { openFeedUrl: podcastFeedUrl } });
+  }
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -129,21 +145,32 @@ export default function PlayerScreen() {
               Close
             </ThemedText>
           </Pressable>
-          <Pressable onPress={() => setShowInfo((value) => !value)} hitSlop={8}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              {showInfo ? 'Hide Info' : 'Episode Info'}
-            </ThemedText>
-          </Pressable>
         </ThemedView>
 
         <ScrollView contentContainerStyle={styles.content}>
-          <Image source={{ uri: artworkUrl }} style={styles.artwork} />
+          <View style={styles.artwork}>
+            {!artworkLoaded && <ShimmerView style={styles.artworkFill} />}
+            <Image
+              source={{ uri: artworkUrl }}
+              style={styles.artworkFill}
+              transition={200}
+              onLoadEnd={() => setArtworkLoaded(true)}
+            />
+          </View>
           <ThemedText type="subtitle" style={styles.centerText} numberOfLines={2}>
             {nowPlaying.episode.title}
           </ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.centerText} numberOfLines={1}>
-            {nowPlaying.podcastTitle}
-          </ThemedText>
+          <Pressable onPress={goToPodcast} disabled={!podcastFeedUrl} hitSlop={8}>
+            <ThemedText themeColor="textSecondary" style={styles.centerText} numberOfLines={1}>
+              {nowPlaying.podcastTitle}
+            </ThemedText>
+          </Pressable>
+
+          <Pressable onPress={() => setShowInfo((value) => !value)} hitSlop={8} style={styles.infoToggle}>
+            <ThemedText type="small" themeColor="accent">
+              {showInfo ? 'Hide Info' : 'Episode Info'}
+            </ThemedText>
+          </Pressable>
 
           {showInfo && (
             <Reanimated.View
@@ -151,12 +178,17 @@ export default function PlayerScreen() {
               exiting={FadeOut.duration(200)}
               layout={LinearTransition.duration(250)}
               style={styles.descriptionWrap}>
-              <DescriptionText
-                html={nowPlaying.episode.description}
-                type="small"
-                themeColor="textSecondary"
-                style={styles.description}
-              />
+              <Pressable onPress={() => setShowInfo(false)}>
+                <ThemedText type="smallBold" style={styles.infoEpisodeTitle}>
+                  {nowPlaying.episode.title}
+                </ThemedText>
+                <DescriptionText
+                  html={nowPlaying.episode.description}
+                  type="small"
+                  themeColor="textSecondary"
+                  style={styles.description}
+                />
+              </Pressable>
             </Reanimated.View>
           )}
 
@@ -321,12 +353,25 @@ const styles = StyleSheet.create({
     height: 240,
     borderRadius: Spacing.four,
     marginBottom: Spacing.two,
+    overflow: 'hidden',
+  },
+  artworkFill: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
   },
   centerText: {
     textAlign: 'center',
   },
+  infoToggle: {
+    marginTop: Spacing.one,
+  },
   descriptionWrap: {
     alignSelf: 'stretch',
+    marginTop: Spacing.two,
+  },
+  infoEpisodeTitle: {
+    marginBottom: Spacing.one,
   },
   description: {
     alignSelf: 'stretch',

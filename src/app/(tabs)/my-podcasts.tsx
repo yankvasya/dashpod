@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +17,14 @@ export default function MyPodcastsScreen() {
   const theme = useTheme();
   const { subscriptions, unsubscribe } = useSubscriptions();
   const { selectedFeedUrl, mountedFeedUrl, openPodcast, closePodcast } = usePodcastDetailNavigation();
+  const { openFeedUrl } = useLocalSearchParams<{ openFeedUrl?: string }>();
+
+  // Lets other screens (currently the player, tapping a podcast title) deep-link into this tab's
+  // in-place detail view via a search param, since PodcastDetailView isn't a routed screen itself.
+  useEffect(() => {
+    if (openFeedUrl) openPodcast(openFeedUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openFeedUrl]);
 
   return (
     <ThemedView style={styles.container}>

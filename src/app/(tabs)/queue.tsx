@@ -1,6 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import DraggableFlatList, { ScaleDecorator, type RenderItemParams } from 'react-native-draggable-flatlist';
@@ -83,11 +83,7 @@ export default function QueueScreen() {
             disabled={isActive}
             hitSlop={12}
             style={styles.dragHandle}>
-            <SymbolView
-              tintColor={theme.textSecondary}
-              name={{ ios: 'line.3.horizontal', android: 'drag_handle', web: 'drag_handle' }}
-              size={20}
-            />
+            <Ionicons name="reorder-three-outline" color={theme.textSecondary} size={20} />
           </Pressable>
           <Pressable style={styles.rowMain} onPress={() => handleViewEpisode(item)}>
             <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
@@ -105,11 +101,7 @@ export default function QueueScreen() {
             onPress={() => removeEpisode(item.episodeId)}
             hitSlop={8}
             style={styles.deleteButton}>
-            <SymbolView
-              tintColor={theme.textSecondary}
-              name={{ ios: 'trash', android: 'delete', web: 'delete' }}
-              size={18}
-            />
+            <Ionicons name="trash-outline" color={theme.textSecondary} size={18} />
           </Pressable>
           <EpisodePlayButton
             playing={false}
@@ -189,13 +181,9 @@ export default function QueueScreen() {
                           Clear
                         </ThemedText>
                       </Pressable>
-                      <SymbolView
-                        tintColor={theme.textSecondary}
-                        name={{
-                          ios: playedCollapsed ? 'chevron.down' : 'chevron.up',
-                          android: 'expand_more',
-                          web: 'expand_more',
-                        }}
+                      <Ionicons
+                        name={playedCollapsed ? 'chevron-down-outline' : 'chevron-up-outline'}
+                        color={theme.textSecondary}
                         size={16}
                       />
                     </View>

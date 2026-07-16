@@ -1,6 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -96,7 +96,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={[styles.topBar, { paddingTop: insets.top + Spacing.three }]}>
-        <Pressable onPress={onBack} hitSlop={8}>
+        <Pressable onPress={onBack} hitSlop={8} style={styles.backButton}>
           <ThemedText type="smallBold" themeColor="textSecondary">
             Back
           </ThemedText>
@@ -181,33 +181,24 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
                   onPress={() => handleDownloadPress(item as Episode)}
                   disabled={downloading}
                   hitSlop={8}
-                  style={styles.downloadButton}>
+                  style={[styles.iconButton, { backgroundColor: downloaded ? theme.accent : 'transparent' }]}>
                   {downloading ? (
                     <ActivityIndicator size="small" color={theme.textSecondary} />
                   ) : (
-                    <SymbolView
-                      tintColor={downloaded ? theme.accent : theme.textSecondary}
-                      name={
-                        downloaded
-                          ? { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }
-                          : { ios: 'arrow.down.circle', android: 'file_download', web: 'file_download' }
-                      }
-                      size={20}
+                    <Ionicons
+                      name="download-outline"
+                      color={downloaded ? theme.background : theme.textSecondary}
+                      size={18}
                     />
                   )}
                 </Pressable>
               )}
               {hasId && (
-                <Pressable onPress={() => handleQueuePress(item as Episode)} hitSlop={8} style={styles.queueButton}>
-                  <SymbolView
-                    tintColor={queued ? theme.accent : theme.textSecondary}
-                    name={
-                      queued
-                        ? { ios: 'text.badge.checkmark', android: 'playlist_add_check', web: 'playlist_add_check' }
-                        : { ios: 'text.badge.plus', android: 'playlist_add', web: 'playlist_add' }
-                    }
-                    size={20}
-                  />
+                <Pressable
+                  onPress={() => handleQueuePress(item as Episode)}
+                  hitSlop={8}
+                  style={[styles.iconButton, { backgroundColor: queued ? theme.accent : 'transparent' }]}>
+                  <Ionicons name="list-outline" color={queued ? theme.background : theme.textSecondary} size={18} />
                 </Pressable>
               )}
               <EpisodePlayButton
@@ -231,6 +222,9 @@ const styles = StyleSheet.create({
   topBar: {
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
   },
   listContent: {
     paddingHorizontal: Spacing.four,
@@ -270,11 +264,12 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
   },
-  downloadButton: {
-    padding: Spacing.one,
-  },
-  queueButton: {
-    padding: Spacing.one,
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   separator: {
     height: StyleSheet.hairlineWidth,

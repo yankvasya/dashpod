@@ -12,7 +12,7 @@ import { usePlayer } from '@/hooks/usePlayer';
 export default function MiniPlayer() {
   const router = useRouter();
   const theme = useTheme();
-  const { nowPlaying, status, episodeLoading, play, pause } = usePlayer();
+  const { nowPlaying, status, episodeLoading, play, pause, isPlayerScreenOpen } = usePlayer();
 
   if (!nowPlaying) return null;
 
@@ -22,7 +22,10 @@ export default function MiniPlayer() {
 
   return (
     <Pressable
-      onPress={() => router.push('/player')}
+      // Belt-and-suspenders against the player screen stacking multiple times: MiniPlayerHost
+      // already unmounts this whole component while the player screen is open, but guard the
+      // push itself too in case that ever lags a tap (e.g. mid-transition).
+      onPress={() => !isPlayerScreenOpen && router.push('/player')}
       style={({ pressed }) => [
         styles.container,
         { backgroundColor: theme.backgroundElement },

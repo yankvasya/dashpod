@@ -1,5 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -47,11 +47,7 @@ export default function MyPodcastsScreen() {
                   </ThemedView>
                 </Pressable>
                 <Pressable onPress={() => unsubscribe(item.id)} hitSlop={8} style={styles.unsubscribeButton}>
-                  <SymbolView
-                    tintColor={theme.textSecondary}
-                    name={{ ios: 'trash', android: 'delete', web: 'delete' }}
-                    size={18}
-                  />
+                  <Ionicons name="trash-outline" color={theme.textSecondary} size={18} />
                 </Pressable>
               </ThemedView>
             )}

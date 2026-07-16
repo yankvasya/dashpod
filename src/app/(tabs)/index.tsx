@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PodcastDetailView } from '@/components/PodcastDetailView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
+import { BottomTabInset, FontFamily, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { usePodcastDetailNavigation } from '@/hooks/usePodcastDetailNavigation';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
@@ -111,7 +111,7 @@ export default function HomeScreen() {
                     {searching ? (
                       <ActivityIndicator />
                     ) : (
-                      <ThemedText type="linkPrimary" themeColor="accent">
+                      <ThemedText type="linkPrimary" themeColor="accent" numberOfLines={1}>
                         Search
                       </ThemedText>
                     )}
@@ -177,7 +177,7 @@ export default function HomeScreen() {
                     {addingRss ? (
                       <ActivityIndicator />
                     ) : (
-                      <ThemedText type="linkPrimary" themeColor="accent">
+                      <ThemedText type="linkPrimary" themeColor="accent" numberOfLines={1}>
                         Add
                       </ThemedText>
                     )}
@@ -243,7 +243,11 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    fontFamily: FontFamily.medium,
     fontSize: 16,
+    // Android's TextInput carries built-in EditText padding that iOS's equivalent doesn't have,
+    // making the same layout look wider/taller there. Zero it so both platforms match.
+    padding: 0,
   },
   resultRow: {
     flexDirection: 'row',

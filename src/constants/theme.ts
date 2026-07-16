@@ -55,6 +55,14 @@ export const Fonts = Platform.select({
   },
 });
 
+/** Bundled Inter weights (see ThemedText) — used everywhere instead of the OS system font
+ * (San Francisco on iOS, Roboto on Android) so text renders identically on every platform. */
+export const FontFamily = {
+  medium: 'Inter_500Medium',
+  semiBold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+} as const;
+
 export const Spacing = {
   half: 2,
   one: 4,
@@ -65,9 +73,11 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-/** Native tab bar height only, excluding the safe-area bottom inset — combine with `useSafeAreaInsets().bottom` for absolute positioning above the tab bar. */
-export const BottomTabBarHeight = Platform.select({ ios: 49, android: 56 }) ?? 0;
+// Both now a single unified value — the tab bar itself (app-tabs.tsx) is a custom JS-rendered
+// component identical on every platform, not each OS's native tab bar widget, so there's no
+// longer a per-platform height to account for.
+export const BottomTabInset = 80;
+/** Tab bar content height only, excluding the safe-area bottom inset — combine with `useSafeAreaInsets().bottom` for absolute positioning above the tab bar. */
+export const BottomTabBarHeight = 56;
 /** Mini player's own height plus its gap above the tab bar — add to a list's bottom padding whenever `usePlayer().nowPlaying` is set, so the last row isn't hidden underneath it. */
 export const MiniPlayerHeight = 64;
-export const MaxContentWidth = 800;

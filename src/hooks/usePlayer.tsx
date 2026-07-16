@@ -70,6 +70,11 @@ interface PlayerContextValue {
   cancelSleepTimer: () => void;
   /** True while the sleep timer's volume ramp-down is in progress (fires just before it pauses). */
   isFadingOut: boolean;
+  /** True exactly while the full player screen (player.tsx) is mounted — set directly from that
+   * screen's own mount/unmount lifecycle rather than derived from the router's pathname, since the
+   * pathname-based check this replaced didn't reliably hide the mini player over a modal route. */
+  isPlayerScreenOpen: boolean;
+  setPlayerScreenOpen: (open: boolean) => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -87,6 +92,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [playbackRate, setPlaybackRateState] = useState(1);
   const [hasPrevious, setHasPrevious] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isPlayerScreenOpen, setPlayerScreenOpen] = useState(false);
   const segmentRef = useRef<ListeningSegment | null>(null);
   const nowPlayingRef = useRef<NowPlaying | null>(null);
   const queueRef = useRef(queue);
@@ -395,6 +401,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setSleepTimerEndOfEpisode,
       cancelSleepTimer,
       isFadingOut,
+      isPlayerScreenOpen,
+      setPlayerScreenOpen,
     }),
     [
       nowPlaying,
@@ -415,6 +423,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setSleepTimerEndOfEpisode,
       isFadingOut,
       cancelSleepTimer,
+      isPlayerScreenOpen,
     ]
   );
 

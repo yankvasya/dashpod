@@ -14,7 +14,7 @@ export function formatDurationCompact(seconds: number): string {
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return remainingMinutes ? `${hours}h${remainingMinutes}m` : `${hours}h`;
+  return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 }
 
 /** "12/34 min" — position/duration in whole minutes, for rows with a partially-listened episode. */

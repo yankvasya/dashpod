@@ -1,9 +1,9 @@
-import Slider from '@react-native-community/slider';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Reanimated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DescriptionText } from '@/components/DescriptionText';
@@ -11,6 +11,7 @@ import { LoadingRing } from '@/components/player/LoadingRing';
 import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
 import { formatSleepTimerRemaining, SleepTimerModal } from '@/components/player/SleepTimerModal';
 import { formatSpeed, SpeedModal } from '@/components/player/SpeedModal';
+import { Slider } from '@/components/Slider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -50,6 +51,7 @@ export default function PlayerScreen() {
     setSleepTimerEndOfEpisode,
     cancelSleepTimer,
     isFadingOut,
+    setPlayerScreenOpen,
   } = usePlayer();
   const [seeking, setSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
@@ -70,6 +72,11 @@ export default function PlayerScreen() {
       router.back();
     }
   }, [nowPlaying, router]);
+
+  useEffect(() => {
+    setPlayerScreenOpen(true);
+    return () => setPlayerScreenOpen(false);
+  }, [setPlayerScreenOpen]);
 
   useEffect(() => {
     if (!isFadingOut) {
@@ -139,20 +146,25 @@ export default function PlayerScreen() {
           </ThemedText>
 
           {showInfo && (
-            <DescriptionText
-              html={nowPlaying.episode.description}
-              type="small"
-              themeColor="textSecondary"
-              style={styles.description}
-            />
+            <Reanimated.View
+              entering={FadeIn.duration(250)}
+              exiting={FadeOut.duration(200)}
+              layout={LinearTransition.duration(250)}
+              style={styles.descriptionWrap}>
+              <DescriptionText
+                html={nowPlaying.episode.description}
+                type="small"
+                themeColor="textSecondary"
+                style={styles.description}
+              />
+            </Reanimated.View>
           )}
 
-          <View style={styles.sliderSection}>
+          <Reanimated.View layout={LinearTransition.duration(250)} style={styles.sliderSection}>
             <Slider
               value={displayPosition}
               minimumValue={0}
               maximumValue={duration || 1}
-              tapToSeek
               onSlidingStart={() => {
                 wasPlayingBeforeSeekRef.current = status.playing;
                 if (status.playing) pause();
@@ -179,7 +191,7 @@ export default function PlayerScreen() {
                 </ThemedText>
               </Pressable>
             </ThemedView>
-          </View>
+          </Reanimated.View>
 
           <ThemedView style={styles.settingsRow}>
             <Pressable
@@ -197,9 +209,9 @@ export default function PlayerScreen() {
                 { backgroundColor: sleepTimer.mode !== 'off' || isFadingOut ? theme.accent : theme.backgroundElement },
               ]}>
               <Animated.View style={[styles.sleepTimerContent, { opacity: fadePulseAnim }]}>
-                <SymbolView
-                  tintColor={sleepTimer.mode !== 'off' || isFadingOut ? theme.background : theme.text}
-                  name={{ ios: 'moon.zzz', android: 'bedtime', web: 'bedtime' }}
+                <Ionicons
+                  name="moon-outline"
+                  color={sleepTimer.mode !== 'off' || isFadingOut ? theme.background : theme.text}
                   size={16}
                 />
                 {isFadingOut ? (
@@ -226,19 +238,11 @@ export default function PlayerScreen() {
 
           <ThemedView style={styles.controlsRow}>
             <Pressable onPress={skipToPrevious} hitSlop={8} style={styles.nextButton}>
-              <SymbolView
-                tintColor={theme.text}
-                name={{ ios: 'backward.end.fill', android: 'skip_previous', web: 'skip_previous' }}
-                size={26}
-              />
+              <Ionicons name="play-skip-back" color={theme.text} size={26} />
             </Pressable>
 
             <Pressable onPress={() => skipBy(-SKIP_SECONDS)} hitSlop={8} style={styles.skipButton}>
-              <SymbolView
-                tintColor={theme.text}
-                name={{ ios: 'gobackward.10', android: 'replay_10', web: 'replay_10' }}
-                size={26}
-              />
+              <MaterialIcons name="replay-10" color={theme.text} size={26} />
             </Pressable>
 
             <Pressable
@@ -253,19 +257,11 @@ export default function PlayerScreen() {
             </Pressable>
 
             <Pressable onPress={() => skipBy(SKIP_SECONDS)} hitSlop={8} style={styles.skipButton}>
-              <SymbolView
-                tintColor={theme.text}
-                name={{ ios: 'goforward.10', android: 'forward_10', web: 'forward_10' }}
-                size={26}
-              />
+              <MaterialIcons name="forward-10" color={theme.text} size={26} />
             </Pressable>
 
             <Pressable onPress={skipToNext} disabled={!hasNext} hitSlop={8} style={styles.nextButton}>
-              <SymbolView
-                tintColor={hasNext ? theme.text : theme.backgroundSelected}
-                name={{ ios: 'forward.end.fill', android: 'skip_next', web: 'skip_next' }}
-                size={26}
-              />
+              <Ionicons name="play-skip-forward" color={hasNext ? theme.text : theme.backgroundSelected} size={26} />
             </Pressable>
           </ThemedView>
         </ScrollView>
@@ -328,6 +324,9 @@ const styles = StyleSheet.create({
   },
   centerText: {
     textAlign: 'center',
+  },
+  descriptionWrap: {
+    alignSelf: 'stretch',
   },
   description: {
     alignSelf: 'stretch',

@@ -149,9 +149,16 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
                 {subscribing ? (
                   <ActivityIndicator />
                 ) : (
-                  <ThemedText type="smallBold" themeColor="accent">
-                    {isSubscribed ? 'Remove from My Podcasts' : 'Add to My Podcasts'}
-                  </ThemedText>
+                  <>
+                    <Ionicons
+                      name={isSubscribed ? 'checkmark-circle' : 'add-circle-outline'}
+                      color={theme.accent}
+                      size={18}
+                    />
+                    <ThemedText type="smallBold" themeColor="accent">
+                      {isSubscribed ? 'Remove from My Podcasts' : 'Add to My Podcasts'}
+                    </ThemedText>
+                  </>
                 )}
               </Pressable>
               <ThemedText type="smallBold" style={styles.episodesLabel}>
@@ -282,6 +289,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subscribeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
     paddingVertical: Spacing.two,
   },
   episodesLabel: {

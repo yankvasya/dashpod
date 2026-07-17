@@ -2,11 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useRef } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DescriptionText } from '@/components/DescriptionText';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
+import { ShimmerView } from '@/components/ShimmerView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
@@ -29,6 +31,7 @@ interface PodcastDetailViewProps {
 export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
   const router = useRouter();
   const theme = useTheme();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<Episode | Omit<Episode, 'id' | 'podcastId'>>>(null);
   const {
@@ -90,7 +93,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
         await downloadEpisode(episode, podcast.title);
       } catch (error) {
         if (error instanceof MobileDataDownloadBlockedError) {
-          Alert.alert('Mobile Data Downloads Off', error.message);
+          Alert.alert(t('podcastDetail.mobileDataBlockedTitle'), t('podcastDetail.mobileDataBlockedMessage'));
         } else {
           throw error;
         }
@@ -106,12 +109,17 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
     }
   }
 
+  // Only true on the very first load of a podcast that isn't cached locally yet (e.g. opened
+  // straight from search) — refreshes of an already-subscribed podcast keep showing the existing
+  // list instead of clearing it out from under the user.
+  const showSkeleton = loading && !podcast && episodes.length === 0;
+
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={[styles.topBar, { paddingTop: insets.top + Spacing.three }]}>
         <Pressable onPress={onBack} hitSlop={8} style={styles.backButton}>
           <ThemedText type="smallBold" themeColor="textSecondary">
-            Back
+            {t('common.back')}
           </ThemedText>
         </Pressable>
         <Pressable
@@ -120,12 +128,20 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
           style={styles.upButton}>
           <Ionicons name="arrow-up-outline" color={theme.textSecondary} size={16} />
           <ThemedText type="smallBold" themeColor="textSecondary">
-            Up
+            {t('podcastDetail.up')}
           </ThemedText>
         </Pressable>
       </ThemedView>
 
-      <FlatList
+      {showSkeleton ? (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          <SkeletonHeader />
+          {Array.from({ length: 6 }).map((_, index) => (
+            <SkeletonEpisodeRow key={index} />
+          ))}
+        </ScrollView>
+      ) : (
+        <FlatList
         ref={listRef}
         data={episodes}
         keyExtractor={(item) => item.guid}
@@ -156,13 +172,13 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
                       size={18}
                     />
                     <ThemedText type="smallBold" themeColor="accent">
-                      {isSubscribed ? 'Remove from My Podcasts' : 'Add to My Podcasts'}
+                      {isSubscribed ? t('podcastDetail.removeFromMyPodcasts') : t('podcastDetail.addToMyPodcasts')}
                     </ThemedText>
                   </>
                 )}
               </Pressable>
               <ThemedText type="smallBold" style={styles.episodesLabel}>
-                Episodes
+                {t('podcastDetail.episodes')}
               </ThemedText>
             </ThemedView>
           ) : null
@@ -170,7 +186,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
         ListEmptyComponent={
           !loading ? (
             <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-              No episodes found.
+              {t('podcastDetail.noEpisodes')}
             </ThemedText>
           ) : null
         }
@@ -193,10 +209,10 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
           const queued = isCurrent || (hasId && isQueued((item as Episode).id));
           const durationLabel =
             isCurrent && status.duration > 0
-              ? formatProgress(status.currentTime, status.duration)
+              ? formatProgress(status.currentTime, status.duration, t)
               : savedState && savedState.position > 0 && !isFinished && item.durationSeconds > 0
-                ? formatProgress(savedState.position, item.durationSeconds)
-                : formatDuration(item.durationSeconds);
+                ? formatProgress(savedState.position, item.durationSeconds, t)
+                : formatDuration(item.durationSeconds, t);
 
           return (
             <ThemedView style={[styles.episodeRow, isFinished && styles.episodeRowFinished]}>
@@ -204,7 +220,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
                 <ThemedText numberOfLines={2}>{item.title}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {[
-                    formatDate(item.publishedAt),
+                    formatDate(item.publishedAt, i18n.language),
                     durationLabel,
                     !downloaded && item.fileSizeBytes ? formatFileSize(item.fileSizeBytes) : null,
                   ]
@@ -246,7 +262,32 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
             </ThemedView>
           );
         }}
-      />
+        />
+      )}
+    </ThemedView>
+  );
+}
+
+function SkeletonHeader() {
+  return (
+    <ThemedView style={styles.header}>
+      <ShimmerView style={styles.artwork} />
+      <ShimmerView style={styles.skeletonTitle} />
+      <ShimmerView style={styles.skeletonAuthor} />
+      <ShimmerView style={styles.skeletonDescriptionLine} />
+      <ShimmerView style={[styles.skeletonDescriptionLine, styles.skeletonDescriptionLineShort]} />
+      <ShimmerView style={styles.skeletonButton} />
+    </ThemedView>
+  );
+}
+
+function SkeletonEpisodeRow() {
+  return (
+    <ThemedView style={styles.episodeRow}>
+      <ThemedView style={styles.episodeText}>
+        <ShimmerView style={styles.skeletonEpisodeTitle} />
+        <ShimmerView style={styles.skeletonEpisodeMeta} />
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -297,6 +338,41 @@ const styles = StyleSheet.create({
   episodesLabel: {
     alignSelf: 'flex-start',
     marginTop: Spacing.two,
+  },
+  skeletonTitle: {
+    width: 200,
+    height: 24,
+    borderRadius: Spacing.one,
+  },
+  skeletonAuthor: {
+    width: 140,
+    height: 16,
+    borderRadius: Spacing.one,
+  },
+  skeletonDescriptionLine: {
+    alignSelf: 'stretch',
+    height: 12,
+    borderRadius: Spacing.one,
+  },
+  skeletonDescriptionLineShort: {
+    alignSelf: 'center',
+    width: '70%',
+  },
+  skeletonButton: {
+    width: 180,
+    height: 20,
+    borderRadius: Spacing.one,
+    marginVertical: Spacing.one,
+  },
+  skeletonEpisodeTitle: {
+    width: '90%',
+    height: 16,
+    borderRadius: Spacing.one,
+  },
+  skeletonEpisodeMeta: {
+    width: '45%',
+    height: 12,
+    borderRadius: Spacing.one,
   },
   episodeRow: {
     flexDirection: 'row',

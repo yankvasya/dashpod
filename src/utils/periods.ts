@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next';
+
 import { formatHistoryDay } from '@/utils/format';
 
 export type PeriodType = 'day' | 'week' | 'month' | 'year' | 'all';
@@ -68,25 +70,25 @@ export function getPeriodRange(period: Period): DateRange | null {
 
 const MONTH_DAY_SHORT = { month: 'short', day: 'numeric' } as const;
 
-export function getPeriodLabel(period: Period): string {
+export function getPeriodLabel(period: Period, t: TFunction, locale: string): string {
   switch (period.type) {
     case 'day':
-      return formatHistoryDay(formatLocalDate(period.anchor));
+      return formatHistoryDay(formatLocalDate(period.anchor), t, locale);
     case 'week': {
       const monday = getMondayOfWeek(period.anchor);
       const sunday = new Date(monday);
       sunday.setDate(sunday.getDate() + 6);
       const sameMonth = monday.getMonth() === sunday.getMonth();
-      const start = monday.toLocaleDateString(undefined, sameMonth ? { day: 'numeric' } : MONTH_DAY_SHORT);
-      const end = sunday.toLocaleDateString(undefined, MONTH_DAY_SHORT);
+      const start = monday.toLocaleDateString(locale, sameMonth ? { day: 'numeric' } : MONTH_DAY_SHORT);
+      const end = sunday.toLocaleDateString(locale, MONTH_DAY_SHORT);
       return `${start} – ${end}`;
     }
     case 'month':
-      return period.anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      return period.anchor.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
     case 'year':
       return String(period.anchor.getFullYear());
     case 'all':
-      return 'All Time';
+      return t('stats.allTime');
   }
 }
 

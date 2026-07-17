@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +19,7 @@ const SEARCH_DEBOUNCE_MS = 600;
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const { subscriptions, subscribe, unsubscribe } = useSubscriptions();
 
   const [query, setQuery] = useState('');
@@ -64,7 +66,7 @@ export default function HomeScreen() {
       setHasSearched(true);
     } catch {
       if (requestIdRef.current !== requestId) return;
-      setSearchError('Search failed. Try again.');
+      setSearchError(t('search.searchFailed'));
     } finally {
       if (requestIdRef.current === requestId) setSearching(false);
     }
@@ -105,7 +107,7 @@ export default function HomeScreen() {
         await subscribe(feedUrl);
       }
     } catch {
-      setSearchError('Could not update that podcast.');
+      setSearchError(t('search.couldNotUpdate'));
     } finally {
       setPendingFeedUrl(null);
     }
@@ -121,7 +123,7 @@ export default function HomeScreen() {
       setRssUrl('');
       openPodcast(feedUrl);
     } catch {
-      setRssError('Could not load that feed. Check the URL.');
+      setRssError(t('search.rssError'));
     } finally {
       setAddingRss(false);
     }
@@ -139,7 +141,7 @@ export default function HomeScreen() {
             ListHeaderComponent={
               <ThemedView style={styles.headerSection}>
                 <ThemedText type="title" style={styles.title}>
-                  Search
+                  {t('search.title')}
                 </ThemedText>
 
                 <ThemedView type="backgroundElement" style={styles.searchRow}>
@@ -147,7 +149,7 @@ export default function HomeScreen() {
                     value={query}
                     onChangeText={setQuery}
                     onSubmitEditing={() => runSearch(query)}
-                    placeholder="Search podcasts"
+                    placeholder={t('search.placeholder')}
                     placeholderTextColor={theme.textSecondary}
                     style={[styles.input, { color: theme.text }]}
                     returnKeyType="search"
@@ -156,7 +158,7 @@ export default function HomeScreen() {
                   {isSearchActive && (
                     <Pressable onPress={cancelSearch} hitSlop={8}>
                       <ThemedText type="linkPrimary" themeColor="accent" numberOfLines={1}>
-                        Cancel
+                        {t('common.cancel')}
                       </ThemedText>
                     </Pressable>
                   )}
@@ -168,7 +170,7 @@ export default function HomeScreen() {
             ListEmptyComponent={
               isSearchActive && hasSearched && !searching ? (
                 <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-                  No podcasts found.
+                  {t('search.noResults')}
                 </ThemedText>
               ) : null
             }
@@ -209,14 +211,14 @@ export default function HomeScreen() {
               !isSearchActive ? (
                 <ThemedView type="backgroundElement" style={styles.rssSection}>
                   <ThemedText type="small" themeColor="textSecondary">
-                    Or paste an RSS feed URL
+                    {t('search.rssLabel')}
                   </ThemedText>
                   <ThemedView style={styles.searchRow}>
                     <TextInput
                       value={rssUrl}
                       onChangeText={setRssUrl}
                       onSubmitEditing={addByRssUrl}
-                      placeholder="https://example.com/feed.xml"
+                      placeholder={t('search.rssPlaceholder')}
                       placeholderTextColor={theme.textSecondary}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -228,7 +230,7 @@ export default function HomeScreen() {
                         <ActivityIndicator />
                       ) : (
                         <ThemedText type="linkPrimary" themeColor="accent" numberOfLines={1}>
-                          Add
+                          {t('search.rssAdd')}
                         </ThemedText>
                       )}
                     </Pressable>

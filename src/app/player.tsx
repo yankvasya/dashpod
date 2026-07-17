@@ -2,6 +2,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Reanimated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -56,6 +57,7 @@ export default function PlayerScreen() {
     setPlayerScreenOpen,
   } = usePlayer();
   const { subscriptions } = useSubscriptions();
+  const { t } = useTranslation();
   const [seeking, setSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const [showRemaining, setShowRemaining] = useState(false);
@@ -142,7 +144,7 @@ export default function PlayerScreen() {
         <ThemedView style={styles.topBar}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
             <ThemedText type="smallBold" themeColor="textSecondary">
-              Close
+              {t('player.close')}
             </ThemedText>
           </Pressable>
         </ThemedView>
@@ -168,7 +170,7 @@ export default function PlayerScreen() {
 
           <Pressable onPress={() => setShowInfo((value) => !value)} hitSlop={8} style={styles.infoToggle}>
             <ThemedText type="small" themeColor="accent">
-              {showInfo ? 'Hide Info' : 'Episode Info'}
+              {showInfo ? t('player.hideInfo') : t('player.episodeInfo')}
             </ThemedText>
           </Pressable>
 
@@ -248,7 +250,7 @@ export default function PlayerScreen() {
                 />
                 {isFadingOut ? (
                   <ThemedText type="smallBold" themeColor="background">
-                    Fading…
+                    {t('player.fading')}
                   </ThemedText>
                 ) : (
                   <>
@@ -259,7 +261,7 @@ export default function PlayerScreen() {
                     )}
                     {sleepTimer.mode === 'endOfEpisode' && (
                       <ThemedText type="smallBold" themeColor="background">
-                        End
+                        {t('player.end')}
                       </ThemedText>
                     )}
                   </>

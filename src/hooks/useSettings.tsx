@@ -3,15 +3,20 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 
 import { getAllSettings, setSetting } from '@/db/queries';
+import i18n from '@/i18n';
 
 /** Reuses the existing light/dark color palettes in theme.ts — 'dark' is labelled "Dark Purple"
  * in the Settings UI, since its accent color already matches. */
 export type AppThemeId = 'light' | 'dark';
 
+export type AppLanguageId = 'en' | 'ru';
+
 const THEME_KEY = 'themeId';
+const LANGUAGE_KEY = 'languageId';
 const ALLOW_MOBILE_DATA_DOWNLOADS_KEY = 'allowMobileDataDownloads';
 const AUTO_CHECK_FOR_UPDATES_KEY = 'autoCheckForUpdates';
 const DEFAULT_THEME: AppThemeId = 'light';
+const DEFAULT_LANGUAGE: AppLanguageId = 'en';
 // Conservative default — most podcast apps default to WiFi-only downloads.
 const DEFAULT_ALLOW_MOBILE_DATA_DOWNLOADS = false;
 const DEFAULT_AUTO_CHECK_FOR_UPDATES = true;
@@ -20,6 +25,8 @@ interface SettingsContextValue {
   loading: boolean;
   themeId: AppThemeId;
   setThemeId: (themeId: AppThemeId) => void;
+  languageId: AppLanguageId;
+  setLanguageId: (languageId: AppLanguageId) => void;
   allowMobileDataDownloads: boolean;
   setAllowMobileDataDownloads: (allow: boolean) => void;
   autoCheckForUpdates: boolean;
@@ -34,6 +41,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
   const [loading, setLoading] = useState(true);
   const [themeId, setThemeIdState] = useState<AppThemeId>(DEFAULT_THEME);
+  const [languageId, setLanguageIdState] = useState<AppLanguageId>(DEFAULT_LANGUAGE);
   const [allowMobileDataDownloads, setAllowMobileDataDownloadsState] = useState(
     DEFAULT_ALLOW_MOBILE_DATA_DOWNLOADS
   );
@@ -43,6 +51,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     getAllSettings(db).then((settings) => {
       if (settings[THEME_KEY] === 'light' || settings[THEME_KEY] === 'dark') {
         setThemeIdState(settings[THEME_KEY]);
+      }
+      if (settings[LANGUAGE_KEY] === 'en' || settings[LANGUAGE_KEY] === 'ru') {
+        setLanguageIdState(settings[LANGUAGE_KEY]);
+        i18n.changeLanguage(settings[LANGUAGE_KEY]);
       }
       if (settings[ALLOW_MOBILE_DATA_DOWNLOADS_KEY] != null) {
         setAllowMobileDataDownloadsState(settings[ALLOW_MOBILE_DATA_DOWNLOADS_KEY] === '1');
@@ -58,6 +70,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     (id: AppThemeId) => {
       setThemeIdState(id);
       setSetting(db, THEME_KEY, id);
+    },
+    [db]
+  );
+
+  const setLanguageId = useCallback(
+    (id: AppLanguageId) => {
+      setLanguageIdState(id);
+      i18n.changeLanguage(id);
+      setSetting(db, LANGUAGE_KEY, id);
     },
     [db]
   );
@@ -83,6 +104,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       loading,
       themeId,
       setThemeId,
+      languageId,
+      setLanguageId,
       allowMobileDataDownloads,
       setAllowMobileDataDownloads,
       autoCheckForUpdates,
@@ -91,6 +114,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [
       loading,
       themeId,
+      languageId,
+      setLanguageId,
       setThemeId,
       allowMobileDataDownloads,
       setAllowMobileDataDownloads,

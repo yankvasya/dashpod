@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,6 +11,7 @@ import { formatFileSize } from '@/services/downloads';
 
 export default function DownloadProgressBanner() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { downloadProgress } = useDownloads();
 
@@ -22,7 +24,7 @@ export default function DownloadProgressBanner() {
         return (
           <ThemedView key={episodeId} type="backgroundElement" style={styles.banner}>
             <ThemedText numberOfLines={1} type="small">
-              {`Downloading ${progress.episodeTitle}`}
+              {t('downloads.downloadingEpisode', { title: progress.episodeTitle })}
             </ThemedText>
             <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
               <View

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BackHandler, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,9 +16,9 @@ import { useTheme } from '@/hooks/use-theme';
 type Section = 'history' | 'stats' | 'settings' | null;
 
 const MORE_ITEMS = [
-  { key: 'history', label: 'History', icon: 'time-outline' },
-  { key: 'stats', label: 'Stats', icon: 'pie-chart-outline' },
-  { key: 'settings', label: 'Settings', icon: 'settings-outline' },
+  { key: 'history', labelKey: 'history', icon: 'time-outline' },
+  { key: 'stats', labelKey: 'stats', icon: 'pie-chart-outline' },
+  { key: 'settings', labelKey: 'settings', icon: 'settings-outline' },
 ] as const;
 
 /** History/Stats/Settings render in place here (not routed pushes) — the tab bar only has room
@@ -26,6 +27,7 @@ const MORE_ITEMS = [
  * proven local-state + Back pattern already used for PodcastDetailView instead. */
 export default function MoreScreen() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const [section, setSection] = useState<Section>(null);
 
   // useFocusEffect (not a plain useEffect) so this listener is only live while More is actually
@@ -53,7 +55,7 @@ export default function MoreScreen() {
         {!section && (
           <>
             <ThemedText type="title" style={styles.title}>
-              More
+              {t('more.title')}
             </ThemedText>
 
             <ThemedView type="backgroundElement" style={styles.section}>
@@ -66,7 +68,7 @@ export default function MoreScreen() {
                     index > 0 && [styles.rowBorder, { borderColor: theme.backgroundSelected }],
                   ]}>
                   <Ionicons name={item.icon} color={theme.text} size={20} />
-                  <ThemedText style={styles.rowLabel}>{item.label}</ThemedText>
+                  <ThemedText style={styles.rowLabel}>{t(`more.${item.labelKey}`)}</ThemedText>
                   <Ionicons name="chevron-forward-outline" color={theme.textSecondary} size={16} />
                 </Pressable>
               ))}

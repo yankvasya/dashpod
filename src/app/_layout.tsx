@@ -13,6 +13,7 @@ import MiniPlayer from '@/components/player/MiniPlayer';
 import UpdateBanner from '@/components/UpdateBanner';
 import { BottomTabBarHeight, Spacing } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db/database';
+import '@/i18n';
 import { AppUpdateProvider } from '@/hooks/useAppUpdate';
 import { DownloadsProvider } from '@/hooks/useDownloads';
 import { PlayerProvider, usePlayer } from '@/hooks/usePlayer';

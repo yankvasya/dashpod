@@ -36,9 +36,15 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
   const [checkResult, setCheckResult] = useState<CheckResult>('idle');
   const buildNumber = getCurrentBuildNumber();
 
-  const themeOptions: { id: AppThemeId; label: string }[] = [
+  const lightThemeOptions: { id: AppThemeId; label: string }[] = [
     { id: 'light', label: t('settings.themeLight') },
+    { id: 'cream', label: t('settings.themeCream') },
+    { id: 'slate', label: t('settings.themeSlate') },
+  ];
+  const darkThemeOptions: { id: AppThemeId; label: string }[] = [
     { id: 'dark', label: t('settings.themeDark') },
+    { id: 'midnightBlue', label: t('settings.themeMidnightBlue') },
+    { id: 'forest', label: t('settings.themeForest') },
   ];
   const languageOptions: { id: AppLanguageId; label: string }[] = [
     { id: 'en', label: t('settings.languageEnglish') },
@@ -67,7 +73,18 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
           {t('settings.appearance')}
         </ThemedText>
         <ThemedView type="backgroundElement" style={styles.section}>
-          {themeOptions.map((option, index) => (
+          {lightThemeOptions.map((option, index) => (
+            <Pressable
+              key={option.id}
+              onPress={() => setThemeId(option.id)}
+              style={[styles.row, index > 0 && [styles.rowBorder, { borderColor: theme.backgroundSelected }]]}>
+              <ThemedText>{option.label}</ThemedText>
+              {themeId === option.id && <Ionicons name="checkmark" color={theme.accent} size={18} />}
+            </Pressable>
+          ))}
+        </ThemedView>
+        <ThemedView type="backgroundElement" style={styles.section}>
+          {darkThemeOptions.map((option, index) => (
             <Pressable
               key={option.id}
               onPress={() => setThemeId(option.id)}

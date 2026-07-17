@@ -2,12 +2,13 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { Colors, type AppThemeId } from '@/constants/theme';
 import { getAllSettings, setSetting } from '@/db/queries';
 import i18n from '@/i18n';
 
-/** Reuses the existing light/dark color palettes in theme.ts — 'dark' is labelled "Dark Purple"
- * in the Settings UI, since its accent color already matches. */
-export type AppThemeId = 'light' | 'dark';
+export type { AppThemeId };
+
+const VALID_THEME_IDS = Object.keys(Colors) as AppThemeId[];
 
 export type AppLanguageId = 'en' | 'ru';
 
@@ -49,8 +50,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     getAllSettings(db).then((settings) => {
-      if (settings[THEME_KEY] === 'light' || settings[THEME_KEY] === 'dark') {
-        setThemeIdState(settings[THEME_KEY]);
+      if (VALID_THEME_IDS.includes(settings[THEME_KEY] as AppThemeId)) {
+        setThemeIdState(settings[THEME_KEY] as AppThemeId);
       }
       if (settings[LANGUAGE_KEY] === 'en' || settings[LANGUAGE_KEY] === 'ru') {
         setLanguageIdState(settings[LANGUAGE_KEY]);

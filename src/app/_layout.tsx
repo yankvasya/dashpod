@@ -11,7 +11,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import DownloadProgressBanner from '@/components/DownloadProgressBanner';
 import MiniPlayer from '@/components/player/MiniPlayer';
 import UpdateBanner from '@/components/UpdateBanner';
-import { BottomTabBarHeight, Spacing } from '@/constants/theme';
+import { BottomTabBarHeight, Colors, Spacing } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db/database';
 import '@/i18n';
 import { AppUpdateProvider } from '@/hooks/useAppUpdate';
@@ -54,7 +54,7 @@ function RootLayoutContent() {
   const { themeId } = useSettings();
 
   return (
-    <ThemeProvider value={themeId === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={Colors[themeId].isDark ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
       <AppUpdateProvider>
         <SubscriptionsProvider>

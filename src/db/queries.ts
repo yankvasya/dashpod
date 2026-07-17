@@ -33,6 +33,7 @@ type EpisodeRow = {
   duration_seconds: number;
   published_at: number;
   artwork_url: string | null;
+  file_size_bytes: number | null;
 };
 
 function toPodcast(row: PodcastRow): Podcast {
@@ -58,6 +59,7 @@ function toEpisode(row: EpisodeRow): Episode {
     durationSeconds: row.duration_seconds,
     publishedAt: row.published_at,
     artworkUrl: row.artwork_url,
+    fileSizeBytes: row.file_size_bytes,
   };
 }
 
@@ -107,15 +109,16 @@ export async function upsertEpisodes(
   await db.withTransactionAsync(async () => {
     for (const episode of episodes) {
       await db.runAsync(
-        `INSERT INTO episodes (podcast_id, guid, title, description, audio_url, duration_seconds, published_at, artwork_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO episodes (podcast_id, guid, title, description, audio_url, duration_seconds, published_at, artwork_url, file_size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(guid) DO UPDATE SET
            title = excluded.title,
            description = excluded.description,
            audio_url = excluded.audio_url,
            duration_seconds = excluded.duration_seconds,
            published_at = excluded.published_at,
-           artwork_url = excluded.artwork_url`,
+           artwork_url = excluded.artwork_url,
+           file_size_bytes = excluded.file_size_bytes`,
         [
           podcastId,
           episode.guid,
@@ -125,6 +128,7 @@ export async function upsertEpisodes(
           episode.durationSeconds,
           episode.publishedAt,
           episode.artworkUrl,
+          episode.fileSizeBytes,
         ]
       );
     }

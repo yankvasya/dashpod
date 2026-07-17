@@ -20,6 +20,8 @@ export interface Episode {
   durationSeconds: number;
   publishedAt: number;
   artworkUrl: string | null;
+  /** The feed's declared enclosure size, shown before downloading — null when the feed omits it. */
+  fileSizeBytes: number | null;
 }
 
 /** A recorded listening session for an episode. */

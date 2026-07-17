@@ -44,6 +44,13 @@ function parsePublishedAt(pubDate: string | undefined): number {
   return Number.isNaN(parsed) ? 0 : Math.floor(parsed / 1000);
 }
 
+/** The enclosure's declared `length` (bytes) — many feeds omit it or report 0, so treat those as unknown rather than a real size. */
+function parseFileSize(length: string | number | undefined): number | null {
+  if (length == null) return null;
+  const bytes = typeof length === 'number' ? length : parseInt(length, 10);
+  return Number.isFinite(bytes) && bytes > 0 ? bytes : null;
+}
+
 export async function fetchPodcastFeed(feedUrl: string): Promise<ParsedFeed> {
   const response = await fetch(feedUrl);
   if (!response.ok) {
@@ -69,15 +76,16 @@ export async function fetchPodcastFeed(feedUrl: string): Promise<ParsedFeed> {
 
   const episodes: Omit<Episode, 'id' | 'podcastId'>[] = items
     .map((item) => {
-      const enclosure = item.enclosure as { '@_url'?: string } | undefined;
+      const enclosure = item.enclosure as { '@_url'?: string; '@_length'?: string } | undefined;
       const audioUrl = enclosure?.['@_url'];
       const guid = textValue(item.guid as XmlNode) || (item.link as string) || audioUrl;
-      return { item, audioUrl, guid };
+      return { item, audioUrl, guid, fileSizeBytes: parseFileSize(enclosure?.['@_length']) };
     })
-    .filter((entry): entry is { item: Record<string, unknown>; audioUrl: string; guid: string } =>
-      Boolean(entry.audioUrl && entry.guid)
+    .filter(
+      (entry): entry is { item: Record<string, unknown>; audioUrl: string; guid: string; fileSizeBytes: number | null } =>
+        Boolean(entry.audioUrl && entry.guid)
     )
-    .map(({ item, audioUrl, guid }) => ({
+    .map(({ item, audioUrl, guid, fileSizeBytes }) => ({
       guid,
       title: textValue(item.title as XmlNode) || 'Untitled Episode',
       description: textValue(item.description as XmlNode) || textValue(item['itunes:summary'] as XmlNode),
@@ -85,6 +93,7 @@ export async function fetchPodcastFeed(feedUrl: string): Promise<ParsedFeed> {
       durationSeconds: parseDurationToSeconds(item['itunes:duration'] as XmlNode),
       publishedAt: parsePublishedAt(item.pubDate as string | undefined),
       artworkUrl: hrefValue(item['itunes:image'] as XmlNode),
+      fileSizeBytes,
     }));
 
   return { podcast, episodes };

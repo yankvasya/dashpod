@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,6 +28,7 @@ function toPlayableEpisode(item: DownloadedEpisode) {
     durationSeconds: item.durationSeconds,
     publishedAt: item.publishedAt,
     artworkUrl: item.artworkUrl,
+    fileSizeBytes: item.fileSizeBytes,
   };
 }
 
@@ -38,10 +39,34 @@ export default function DownloadsScreen() {
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
   const { isQueued, addEpisode, removeEpisode } = useQueue();
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
+  const [storageSheetVisible, setStorageSheetVisible] = useState(false);
 
   const listenedDownloads = downloads.filter((item) => item.isFinished);
   const listenedSize = listenedDownloads.reduce((sum, item) => sum + item.fileSizeBytes, 0);
   const allSize = downloads.reduce((sum, item) => sum + item.fileSizeBytes, 0);
+
+  const storageByPodcast = useMemo(() => {
+    const byPodcast = new Map<
+      number,
+      { podcastId: number; podcastTitle: string; artworkUrl: string; episodeCount: number; totalBytes: number }
+    >();
+    for (const item of downloads) {
+      const existing = byPodcast.get(item.podcastId);
+      if (existing) {
+        existing.episodeCount += 1;
+        existing.totalBytes += item.fileSizeBytes;
+      } else {
+        byPodcast.set(item.podcastId, {
+          podcastId: item.podcastId,
+          podcastTitle: item.podcastTitle,
+          artworkUrl: item.artworkUrl,
+          episodeCount: 1,
+          totalBytes: item.fileSizeBytes,
+        });
+      }
+    }
+    return Array.from(byPodcast.values()).sort((a, b) => b.totalBytes - a.totalBytes);
+  }, [downloads]);
 
   async function handlePlayPause(item: DownloadedEpisode) {
     if (nowPlaying?.episode.id === item.episodeId) {
@@ -90,6 +115,15 @@ export default function DownloadsScreen() {
             </Pressable>
           )}
         </ThemedView>
+
+        {downloads.length > 0 && (
+          <Pressable onPress={() => setStorageSheetVisible(true)} hitSlop={8} style={styles.storageRow}>
+            <ThemedText type="small" themeColor="textSecondary">
+              {`${downloads.length} episode${downloads.length === 1 ? '' : 's'} · ${formatFileSize(allSize)} used`}
+            </ThemedText>
+            <Ionicons name="chevron-forward-outline" color={theme.textSecondary} size={14} />
+          </Pressable>
+        )}
 
         <FlatList
           data={downloads}
@@ -193,6 +227,36 @@ export default function DownloadsScreen() {
           </ThemedText>
         </Pressable>
       </ModalSheet>
+
+      <ModalSheet
+        visible={storageSheetVisible}
+        onClose={() => setStorageSheetVisible(false)}
+        contentStyle={styles.sheet}>
+        <ThemedText type="subtitle" style={styles.centerText}>
+          Storage
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+          {`${downloads.length} episode${downloads.length === 1 ? '' : 's'} · ${formatFileSize(allSize)} total`}
+        </ThemedText>
+        <FlatList
+          data={storageByPodcast}
+          keyExtractor={(item) => String(item.podcastId)}
+          style={styles.storageList}
+          ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
+          renderItem={({ item }) => (
+            <ThemedView style={styles.storagePodcastRow}>
+              <Image source={{ uri: item.artworkUrl }} style={styles.storageArtwork} />
+              <ThemedView style={styles.rowText}>
+                <ThemedText numberOfLines={1}>{item.podcastTitle}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {`${item.episodeCount} episode${item.episodeCount === 1 ? '' : 's'}`}
+                </ThemedText>
+              </ThemedView>
+              <ThemedText type="smallBold">{formatFileSize(item.totalBytes)}</ThemedText>
+            </ThemedView>
+          )}
+        />
+      </ModalSheet>
     </ThemedView>
   );
 }
@@ -219,6 +283,27 @@ const styles = StyleSheet.create({
   deleteAllButton: {
     flexShrink: 0,
     marginLeft: Spacing.two,
+  },
+  storageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.three,
+  },
+  storageList: {
+    maxHeight: 320,
+  },
+  storagePodcastRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  storageArtwork: {
+    width: 40,
+    height: 40,
+    borderRadius: Spacing.two,
   },
   listContent: {
     paddingHorizontal: Spacing.four,

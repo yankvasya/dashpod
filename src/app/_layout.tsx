@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import DownloadProgressBanner from '@/components/DownloadProgressBanner';
 import MiniPlayer from '@/components/player/MiniPlayer';
+import { ThemeTransitionOverlay } from '@/components/ThemeTransitionOverlay';
 import UpdateBanner from '@/components/UpdateBanner';
 import { BottomTabBarHeight, Colors, Spacing } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db/database';
@@ -76,6 +77,7 @@ function RootLayoutContent() {
         </SubscriptionsProvider>
         <UpdateBanner />
       </AppUpdateProvider>
+      <ThemeTransitionOverlay background={Colors[themeId].background} />
     </ThemeProvider>
   );
 }

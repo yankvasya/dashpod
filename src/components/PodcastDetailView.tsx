@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
@@ -30,7 +29,6 @@ interface PodcastDetailViewProps {
 /** Rendered in place within a tab screen (not a routed push) so the native tab bar underneath
  * never disappears — see index.tsx / my-podcasts.tsx, which swap this in via local state. */
 export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
-  const router = useRouter();
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -46,7 +44,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
     refresh,
     toggleSubscription,
   } = usePodcastDetail(feedUrl);
-  const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
+  const { nowPlaying, status, episodeLoading, loadEpisode, play, pause, expandPlayer } = usePlayer();
   const { isDownloaded, getDownloadedUri, downloadingEpisodeIds, downloadEpisode, removeDownload } =
     useDownloads();
   const { isQueued, addEpisode, removeEpisode } = useQueue();
@@ -89,7 +87,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
       );
     }
     setDetailEpisode(null);
-    router.push('/player');
+    expandPlayer();
   }
 
   async function handleDownloadPress(episode: Episode) {

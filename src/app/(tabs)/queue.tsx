@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -33,11 +32,10 @@ function toPlayableEpisode(item: QueuedEpisode) {
 }
 
 export default function QueueScreen() {
-  const router = useRouter();
   const theme = useTheme();
   const { t } = useTranslation();
   const { queue, removeEpisode, markPlayed, reorder, playedFromQueue, clearPlayedFromQueue } = useQueue();
-  const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
+  const { nowPlaying, status, episodeLoading, loadEpisode, play, pause, expandPlayer } = usePlayer();
   const [playedCollapsed, setPlayedCollapsed] = useState(false);
   const [detailEpisode, setDetailEpisode] = useState<QueuedEpisode | null>(null);
 
@@ -71,7 +69,7 @@ export default function QueueScreen() {
       loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
     }
     setDetailEpisode(null);
-    router.push('/player');
+    expandPlayer();
   }
 
   function renderItem({ item, drag, isActive }: RenderItemParams<QueuedEpisode>) {
@@ -221,7 +219,7 @@ export default function QueueScreen() {
                   </ThemedText>
                   <ThemedView style={styles.row}>
                     <ThemedView style={styles.dragHandle} />
-                    <Pressable style={styles.rowMain} onPress={() => router.push('/player')}>
+                    <Pressable style={styles.rowMain} onPress={expandPlayer}>
                       <Image source={{ uri: nowPlayingArtwork ?? undefined }} style={styles.artwork} />
                       <ThemedView style={styles.rowText}>
                         <ThemedText numberOfLines={1} themeColor="textSecondary" type="small">

@@ -58,6 +58,9 @@ export default {
     upNext: 'Up Next',
     empty: "Nothing queued yet — add episodes from a podcast's episode list.",
   },
+  episodeDetail: {
+    openPlayer: 'Open Player',
+  },
   player: {
     close: 'Close',
     episodeInfo: 'Episode Info',

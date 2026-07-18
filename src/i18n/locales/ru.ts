@@ -65,6 +65,9 @@ const ru = {
     upNext: 'Далее',
     empty: 'В очереди пока пусто — добавьте эпизоды из списка эпизодов подкаста.',
   },
+  episodeDetail: {
+    openPlayer: 'Открыть плеер',
+  },
   player: {
     close: 'Закрыть',
     episodeInfo: 'Об эпизоде',

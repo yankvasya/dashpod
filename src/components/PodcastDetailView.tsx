@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DescriptionText } from '@/components/DescriptionText';
+import { EpisodeDetailSheet } from '@/components/EpisodeDetailSheet';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ShimmerView } from '@/components/ShimmerView';
 import { ThemedText } from '@/components/themed-text';
@@ -49,6 +50,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
   const { isDownloaded, getDownloadedUri, downloadingEpisodeIds, downloadEpisode, removeDownload } =
     useDownloads();
   const { isQueued, addEpisode, removeEpisode } = useQueue();
+  const [detailEpisode, setDetailEpisode] = useState<(typeof episodes)[number] | null>(null);
 
   function resolveForPlayback(episode: (typeof episodes)[number]) {
     const localUri = 'id' in episode && episode.id != null ? getDownloadedUri(episode.id) : null;
@@ -74,6 +76,10 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
   }
 
   function handleViewEpisode(episode: (typeof episodes)[number]) {
+    setDetailEpisode(episode);
+  }
+
+  function handleOpenPlayer(episode: (typeof episodes)[number]) {
     if (nowPlaying?.episode.guid !== episode.guid && podcast) {
       loadEpisode(
         resolveForPlayback(episode),
@@ -82,6 +88,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
         'id' in podcast ? podcast.id : null
       );
     }
+    setDetailEpisode(null);
     router.push('/player');
   }
 
@@ -113,6 +120,19 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
   // straight from search) — refreshes of an already-subscribed podcast keep showing the existing
   // list instead of clearing it out from under the user.
   const showSkeleton = loading && !podcast && episodes.length === 0;
+
+  const detailIsCurrent = detailEpisode ? nowPlaying?.episode.guid === detailEpisode.guid : false;
+  const detailSavedState =
+    detailEpisode && 'id' in detailEpisode && detailEpisode.id != null
+      ? playbackStates.get(detailEpisode.id)
+      : undefined;
+  const detailProgress = detailIsCurrent
+    ? status.duration > 0
+      ? status.currentTime / status.duration
+      : 0
+    : detailSavedState && detailEpisode && detailEpisode.durationSeconds > 0
+      ? detailSavedState.position / detailEpisode.durationSeconds
+      : 0;
 
   return (
     <ThemedView style={styles.container}>
@@ -264,6 +284,28 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
         }}
         />
       )}
+
+      <EpisodeDetailSheet
+        visible={detailEpisode != null}
+        episode={
+          detailEpisode
+            ? {
+                title: detailEpisode.title,
+                podcastTitle: podcast?.title ?? '',
+                artworkUrl: detailEpisode.artworkUrl ?? podcast?.artworkUrl ?? null,
+                description: detailEpisode.description,
+                durationSeconds: detailEpisode.durationSeconds,
+                publishedAt: detailEpisode.publishedAt,
+              }
+            : null
+        }
+        playing={detailIsCurrent && status.playing}
+        loading={detailIsCurrent && (episodeLoading || status.isBuffering)}
+        progress={detailProgress}
+        onPlayPause={() => detailEpisode && handlePlayPause(detailEpisode)}
+        onOpenPlayer={() => detailEpisode && handleOpenPlayer(detailEpisode)}
+        onClose={() => setDetailEpisode(null)}
+      />
     </ThemedView>
   );
 }

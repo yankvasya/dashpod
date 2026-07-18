@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import DraggableFlatList, { ScaleDecorator, type RenderItemParams } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EpisodeDetailSheet } from '@/components/EpisodeDetailSheet';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -38,6 +39,7 @@ export default function QueueScreen() {
   const { queue, removeEpisode, markPlayed, reorder, playedFromQueue, clearPlayedFromQueue } = useQueue();
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
   const [playedCollapsed, setPlayedCollapsed] = useState(false);
+  const [detailEpisode, setDetailEpisode] = useState<QueuedEpisode | null>(null);
 
   const upNext = queue.filter((item) => item.episodeId !== nowPlaying?.episode.id);
   // If the user jumps back to an episode that's already in "Played" (e.g. via the previous
@@ -61,9 +63,14 @@ export default function QueueScreen() {
   }
 
   function handleViewEpisode(item: QueuedEpisode) {
+    setDetailEpisode(item);
+  }
+
+  function handleOpenPlayer(item: QueuedEpisode) {
     if (nowPlaying?.episode.id !== item.episodeId) {
       loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
     }
+    setDetailEpisode(null);
     router.push('/player');
   }
 
@@ -152,6 +159,17 @@ export default function QueueScreen() {
     ? (nowPlaying.episode.artworkUrl ?? nowPlaying.podcastArtworkUrl)
     : null;
   const nowPlayingLoading = episodeLoading || status.isBuffering;
+
+  const detailIsCurrent = detailEpisode ? nowPlaying?.episode.id === detailEpisode.episodeId : false;
+  const detailProgress = detailEpisode
+    ? detailIsCurrent
+      ? status.duration > 0
+        ? status.currentTime / status.duration
+        : 0
+      : detailEpisode.durationSeconds > 0
+        ? detailEpisode.playbackPosition / detailEpisode.durationSeconds
+        : 0
+    : 0;
 
   return (
     <ThemedView style={styles.container}>
@@ -243,6 +261,28 @@ export default function QueueScreen() {
           renderItem={renderItem}
         />
       </SafeAreaView>
+
+      <EpisodeDetailSheet
+        visible={detailEpisode != null}
+        episode={
+          detailEpisode
+            ? {
+                title: detailEpisode.episodeTitle,
+                podcastTitle: detailEpisode.podcastTitle,
+                artworkUrl: detailEpisode.artworkUrl,
+                description: detailEpisode.description,
+                durationSeconds: detailEpisode.durationSeconds,
+                publishedAt: detailEpisode.publishedAt,
+              }
+            : null
+        }
+        playing={detailIsCurrent && status.playing}
+        loading={detailIsCurrent && (episodeLoading || status.isBuffering)}
+        progress={detailProgress}
+        onPlayPause={() => detailEpisode && handlePlayPause(detailEpisode)}
+        onOpenPlayer={() => detailEpisode && handleOpenPlayer(detailEpisode)}
+        onClose={() => setDetailEpisode(null)}
+      />
     </ThemedView>
   );
 }

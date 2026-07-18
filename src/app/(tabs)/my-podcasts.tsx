@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +16,7 @@ import { useSubscriptions } from '@/hooks/useSubscriptions';
 
 export default function MyPodcastsScreen() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const { subscriptions, unsubscribe } = useSubscriptions();
   const { selectedFeedUrl, mountedFeedUrl, openPodcast, closePodcast } = usePodcastDetailNavigation();
   const { openFeedUrl } = useLocalSearchParams<{ openFeedUrl?: string }>();
@@ -31,7 +33,7 @@ export default function MyPodcastsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={[styles.flexFill, selectedFeedUrl && styles.hidden]}>
           <ThemedText type="title" style={styles.title}>
-            My Podcasts
+            {t('myPodcasts.title')}
           </ThemedText>
 
           <FlatList
@@ -40,7 +42,7 @@ export default function MyPodcastsScreen() {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-                No subscriptions yet — search for a podcast to get started.
+                {t('myPodcasts.empty')}
               </ThemedText>
             }
             renderItem={({ item }) => (

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ModalSheet } from '@/components/ModalSheet';
@@ -9,7 +10,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { formatDuration, formatDurationCompact } from '@/utils/format';
 import { formatLocalDate, getPeriodRange } from '@/utils/periods';
 
-const WEEKDAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+/** Monday-start short weekday labels, driven by the app's chosen language rather than hardcoded
+ * English abbreviations — 2024-01-01 is a Monday, used purely as a stable reference date. */
+function getWeekdayLabels(locale: string): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+  return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2024, 0, 1 + i)));
+}
 
 interface CalendarMonthGridProps {
   visible: boolean;
@@ -33,6 +39,8 @@ function startOfDay(date: Date): Date {
  * scrim+sheet pattern used elsewhere). */
 export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: CalendarMonthGridProps) {
   const theme = useTheme();
+  const { t, i18n } = useTranslation();
+  const weekdayLabels = useMemo(() => getWeekdayLabels(i18n.language), [i18n.language]);
   const [displayedMonth, setDisplayedMonth] = useState(
     new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
   );
@@ -71,7 +79,9 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
   return (
     <ModalSheet visible={visible} onClose={onClose} contentStyle={styles.sheet}>
       <ThemedText type="small" themeColor="textSecondary" style={styles.monthTotal}>
-        {monthTotalMinutes > 0 ? `${formatDuration(monthTotalMinutes * 60)} listened this month` : ' '}
+        {monthTotalMinutes > 0
+          ? t('calendar.listenedThisMonth', { duration: formatDuration(monthTotalMinutes * 60, t) })
+          : ' '}
       </ThemedText>
 
       <View style={styles.monthNav}>
@@ -83,7 +93,7 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
           </ThemedText>
         </Pressable>
         <ThemedText type="smallBold">
-          {displayedMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+          {displayedMonth.toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' })}
         </ThemedText>
         <Pressable
           onPress={() => setDisplayedMonth(new Date(displayedMonth.getFullYear(), displayedMonth.getMonth() + 1, 1))}
@@ -95,8 +105,8 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
       </View>
 
       <View style={styles.weekdayRow}>
-        {WEEKDAY_LABELS.map((label) => (
-          <ThemedText key={label} type="small" themeColor="textSecondary" style={styles.weekdayLabel}>
+        {weekdayLabels.map((label, index) => (
+          <ThemedText key={index} type="small" themeColor="textSecondary" style={styles.weekdayLabel}>
             {label}
           </ThemedText>
         ))}
@@ -130,7 +140,7 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
                 </ThemedText>
               </View>
               <ThemedText type="small" themeColor="textSecondary" style={styles.dayCaption}>
-                {totalMinutes >= 1 ? formatDurationCompact(totalMinutes * 60) : ''}
+                {totalMinutes >= 1 ? formatDurationCompact(totalMinutes * 60, t) : ''}
               </ThemedText>
             </Pressable>
           );

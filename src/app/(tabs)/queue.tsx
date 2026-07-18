@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import DraggableFlatList, { ScaleDecorator, type RenderItemParams } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,6 +34,7 @@ function toPlayableEpisode(item: QueuedEpisode) {
 export default function QueueScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
   const { queue, removeEpisode, markPlayed, reorder, playedFromQueue, clearPlayedFromQueue } = useQueue();
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
   const [playedCollapsed, setPlayedCollapsed] = useState(false);
@@ -68,8 +70,8 @@ export default function QueueScreen() {
   function renderItem({ item, drag, isActive }: RenderItemParams<QueuedEpisode>) {
     const durationLabel =
       item.playbackPosition > 0 && !item.isFinished && item.durationSeconds > 0
-        ? formatProgress(item.playbackPosition, item.durationSeconds)
-        : formatDuration(item.durationSeconds);
+        ? formatProgress(item.playbackPosition, item.durationSeconds, t)
+        : formatDuration(item.durationSeconds, t);
     // Only meaningful right as this row is tapped and playback is switching to it — nowPlaying
     // updates almost immediately, but expo-audio has to actually buffer a remote stream before it
     // starts, and this row's button was never showing that wait at all before.
@@ -131,7 +133,7 @@ export default function QueueScreen() {
             </ThemedText>
             <ThemedText numberOfLines={2}>{item.episodeTitle}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {formatDuration(item.durationSeconds)}
+              {formatDuration(item.durationSeconds, t)}
             </ThemedText>
           </ThemedView>
         </Pressable>
@@ -155,7 +157,7 @@ export default function QueueScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ThemedText type="title" style={styles.title}>
-          Queue
+          {t('queue.title')}
         </ThemedText>
 
         <DraggableFlatList
@@ -174,12 +176,12 @@ export default function QueueScreen() {
                     onPress={() => setPlayedCollapsed((value) => !value)}
                     style={styles.playedHeader}>
                     <ThemedText type="smallBold" themeColor="textSecondary">
-                      Played ({playedFromQueueVisible.length})
+                      {t('queue.played', { count: playedFromQueueVisible.length })}
                     </ThemedText>
                     <View style={styles.playedHeaderActions}>
                       <Pressable onPress={clearPlayedFromQueue} hitSlop={8}>
                         <ThemedText type="small" themeColor="accent">
-                          Clear
+                          {t('queue.clear')}
                         </ThemedText>
                       </Pressable>
                       <Ionicons
@@ -197,7 +199,7 @@ export default function QueueScreen() {
               {nowPlaying && (
                 <ThemedView style={styles.nowPlayingSection}>
                   <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
-                    Now Playing
+                    {t('queue.nowPlaying')}
                   </ThemedText>
                   <ThemedView style={styles.row}>
                     <ThemedView style={styles.dragHandle} />
@@ -209,7 +211,7 @@ export default function QueueScreen() {
                         </ThemedText>
                         <ThemedText numberOfLines={2}>{nowPlaying.episode.title}</ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
-                          {status.duration > 0 ? formatProgress(status.currentTime, status.duration) : ''}
+                          {status.duration > 0 ? formatProgress(status.currentTime, status.duration, t) : ''}
                         </ThemedText>
                       </ThemedView>
                     </Pressable>
@@ -223,7 +225,7 @@ export default function QueueScreen() {
                   </ThemedView>
                   {upNext.length > 0 && (
                     <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
-                      Up Next
+                      {t('queue.upNext')}
                     </ThemedText>
                   )}
                 </ThemedView>
@@ -233,7 +235,7 @@ export default function QueueScreen() {
           ListEmptyComponent={
             !nowPlaying ? (
               <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-                Nothing queued yet — add episodes from a podcast's episode list.
+                {t('queue.empty')}
               </ThemedText>
             ) : null
           }

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { Tabs, TabList, TabSlot, TabTrigger, type TabTriggerSlotProps } from 'expo-router/ui';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Reanimated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,16 +9,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type en from '@/i18n/locales/en';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
+type TabsTranslationKey = keyof typeof en.tabs;
 
 const TABS = [
-  { name: 'index', href: '/', label: 'Home', icon: 'home-outline' },
-  { name: 'my-podcasts', href: '/my-podcasts', label: 'My Podcasts', icon: 'library-outline' },
-  { name: 'downloads', href: '/downloads', label: 'Downloads', icon: 'download-outline' },
-  { name: 'queue', href: '/queue', label: 'Queue', icon: 'list-outline' },
-  { name: 'more', href: '/more', label: 'More', icon: 'ellipsis-horizontal-outline' },
-] as const satisfies { name: string; href: string; label: string; icon: IconName }[];
+  { name: 'index', href: '/', labelKey: 'home', icon: 'home-outline' },
+  { name: 'my-podcasts', href: '/my-podcasts', labelKey: 'myPodcasts', icon: 'library-outline' },
+  { name: 'downloads', href: '/downloads', labelKey: 'downloads', icon: 'download-outline' },
+  { name: 'queue', href: '/queue', labelKey: 'queue', icon: 'list-outline' },
+  { name: 'more', href: '/more', labelKey: 'more', icon: 'ellipsis-horizontal-outline' },
+] as const satisfies { name: string; href: string; labelKey: TabsTranslationKey; icon: IconName }[];
 
 /** A hand-built tab bar instead of NativeTabs — NativeTabs renders each platform's real native
  * widget (UITabBar on iOS, Material's BottomNavigationView on Android), which look and animate
@@ -25,6 +28,8 @@ const TABS = [
  * the same underlying `expo-router/ui` primitive the web build already used, now shared by every
  * platform so the tab bar is pixel- and animation-identical everywhere. */
 export default function AppTabs() {
+  const { t } = useTranslation();
+
   return (
     <Tabs>
       <TabSlot />
@@ -32,7 +37,7 @@ export default function AppTabs() {
         <TabBar>
           {TABS.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
-              <TabButton icon={tab.icon} label={tab.label} />
+              <TabButton icon={tab.icon} label={t(`tabs.${tab.labelKey}`)} />
             </TabTrigger>
           ))}
         </TabBar>

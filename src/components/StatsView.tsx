@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 
@@ -15,20 +16,20 @@ import type { PodcastListeningStats } from '@/types/podcast';
 import { formatDuration } from '@/utils/format';
 import { getPeriodLabel, getPeriodRange, shiftPeriod, type Period, type PeriodType } from '@/utils/periods';
 
-const PERIOD_TYPES: { type: PeriodType; label: string }[] = [
-  { type: 'day', label: 'Day' },
-  { type: 'week', label: 'Week' },
-  { type: 'month', label: 'Month' },
-  { type: 'year', label: 'Year' },
-  { type: 'all', label: 'All' },
-];
-
 const CHART_COLORS = ['#6C63FF', '#5AC8FA', '#FF9F43', '#FF6B81', '#2ED9C3', '#FFD166', '#A78BFA', '#4ECDC4'];
 
 /** Rendered in place within the More tab (not a routed push) — see more.tsx, which swaps this in
  * via local state, same pattern as PodcastDetailView. */
 export function StatsView({ onBack }: { onBack: () => void }) {
   const theme = useTheme();
+  const { t, i18n } = useTranslation();
+  const PERIOD_TYPES: { type: PeriodType; label: string }[] = [
+    { type: 'day', label: t('stats.periodDay') },
+    { type: 'week', label: t('stats.periodWeek') },
+    { type: 'month', label: t('stats.periodMonth') },
+    { type: 'year', label: t('stats.periodYear') },
+    { type: 'all', label: t('stats.periodAll') },
+  ];
   const [period, setPeriod] = useState<Period>({ type: 'day', anchor: new Date() });
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [expandedPodcastIds, setExpandedPodcastIds] = useState<Set<number>>(new Set());
@@ -79,10 +80,10 @@ export function StatsView({ onBack }: { onBack: () => void }) {
             <ThemedText numberOfLines={2}>{item.podcastTitle}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {[
-                formatDuration(item.totalMinutes * 60),
+                formatDuration(item.totalMinutes * 60, t),
                 period.type === 'all'
-                  ? `${item.finishedEpisodes}/${item.totalEpisodes} episodes`
-                  : `${item.episodeCount} episode${item.episodeCount === 1 ? '' : 's'}`,
+                  ? t('stats.finishedOf', { finished: item.finishedEpisodes, total: item.totalEpisodes })
+                  : t('stats.episodeCount', { count: item.episodeCount }),
               ].join(' · ')}
             </ThemedText>
           </ThemedView>
@@ -102,7 +103,7 @@ export function StatsView({ onBack }: { onBack: () => void }) {
                   {episode.episodeTitle}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {formatDuration(episode.totalMinutes * 60)}
+                  {formatDuration(episode.totalMinutes * 60, t)}
                 </ThemedText>
               </View>
             ))}
@@ -116,12 +117,12 @@ export function StatsView({ onBack }: { onBack: () => void }) {
     <>
       <Pressable onPress={onBack} hitSlop={8} style={styles.backButton}>
         <ThemedText type="smallBold" themeColor="textSecondary">
-          Back
+          {t('common.back')}
         </ThemedText>
       </Pressable>
 
       <ThemedText type="title" style={styles.title}>
-        Stats
+        {t('stats.title')}
       </ThemedText>
 
       <ThemedView type="backgroundElement" style={styles.toggle}>
@@ -148,7 +149,7 @@ export function StatsView({ onBack }: { onBack: () => void }) {
             onPress={() => period.type === 'day' && setCalendarVisible(true)}
             disabled={period.type !== 'day'}
             style={styles.navLabel}>
-            <ThemedText type="smallBold">{getPeriodLabel(period)}</ThemedText>
+            <ThemedText type="smallBold">{getPeriodLabel(period, t, i18n.language)}</ThemedText>
             {period.type === 'day' && <Ionicons name="calendar-outline" color={theme.textSecondary} size={14} />}
           </Pressable>
           <Pressable
@@ -181,7 +182,7 @@ export function StatsView({ onBack }: { onBack: () => void }) {
                 innerCircleColor={theme.background}
                 centerLabelComponent={() => (
                   <ThemedText type="smallBold" style={styles.chartCenterText}>
-                    {formatDuration(totalMinutes * 60)}
+                    {formatDuration(totalMinutes * 60, t)}
                   </ThemedText>
                 )}
               />
@@ -191,7 +192,7 @@ export function StatsView({ onBack }: { onBack: () => void }) {
         ListEmptyComponent={
           !loading ? (
             <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-              Nothing listened to in this period yet.
+              {t('stats.empty')}
             </ThemedText>
           ) : null
         }

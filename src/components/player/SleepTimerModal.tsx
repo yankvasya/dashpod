@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ModalSheet } from '@/components/ModalSheet';
@@ -32,11 +33,12 @@ export function SleepTimerModal({
   onClose,
 }: SleepTimerModalProps) {
   const theme = useTheme();
+  const { t } = useTranslation();
 
   return (
     <ModalSheet visible={visible} onClose={onClose} contentStyle={styles.sheet}>
       <ThemedText type="subtitle" style={styles.centerText}>
-        Sleep Timer
+        {t('sleepTimer.title')}
       </ThemedText>
 
       <View style={styles.grid}>
@@ -45,7 +47,7 @@ export function SleepTimerModal({
             key={minutes}
             onPress={() => onSelectMinutes(minutes)}
             style={[styles.gridButton, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="smallBold">{minutes} min</ThemedText>
+            <ThemedText type="smallBold">{t('format.minutes', { count: minutes })}</ThemedText>
           </Pressable>
         ))}
       </View>
@@ -60,7 +62,7 @@ export function SleepTimerModal({
           type="smallBold"
           themeColor={mode === 'endOfEpisode' ? 'background' : 'text'}
           style={styles.centerText}>
-          End of Episode
+          {t('sleepTimer.endOfEpisode')}
         </ThemedText>
       </Pressable>
 
@@ -68,7 +70,7 @@ export function SleepTimerModal({
         <Pressable onPress={onCancel} style={styles.deleteButton}>
           <Ionicons name="trash-outline" color={theme.danger} size={16} />
           <ThemedText type="smallBold" themeColor="danger">
-            Delete Sleep Timer
+            {t('sleepTimer.delete')}
           </ThemedText>
         </Pressable>
       )}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -20,6 +21,7 @@ const DISMISS_DISTANCE = 80;
 
 export default function UpdateBanner() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { updateAvailable, dismiss } = useAppUpdate();
   const [installing, setInstalling] = useState(false);
@@ -76,11 +78,11 @@ export default function UpdateBanner() {
               <View style={styles.textContainer}>
                 <ThemedText type="smallBold">
                   {installing
-                    ? 'Downloading update…'
-                    : `Update available — v${updateAvailable.version} (${updateAvailable.stage})`}
+                    ? t('updateBanner.downloading')
+                    : t('updateBanner.available', { version: updateAvailable.version, stage: updateAvailable.stage })}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {installing ? `${Math.round(progress * 100)}%` : 'Tap to install, swipe to dismiss'}
+                  {installing ? `${Math.round(progress * 100)}%` : t('updateBanner.tapToInstall')}
                 </ThemedText>
               </View>
               <Pressable onPress={dismiss} hitSlop={8} style={styles.dismissButton}>

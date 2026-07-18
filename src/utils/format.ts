@@ -1,32 +1,41 @@
-export function formatDuration(seconds: number): string {
+import type { TFunction } from 'i18next';
+
+export function formatDuration(seconds: number, t: TFunction): string {
   if (!seconds) return '';
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return t('format.minutes', { count: minutes });
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
+  return remainingMinutes
+    ? `${t('format.hours', { count: hours })} ${t('format.minutes', { count: remainingMinutes })}`
+    : t('format.hours', { count: hours });
 }
 
 /** "51m" / "1h51m" / "2h" — same breakdown as formatDuration, no spaces, for tight spaces like calendar cells. */
-export function formatDurationCompact(seconds: number): string {
+export function formatDurationCompact(seconds: number, t: TFunction): string {
   if (!seconds) return '';
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return t('format.minutesCompact', { count: minutes });
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  return remainingMinutes
+    ? `${t('format.hoursCompact', { count: hours })} ${t('format.minutesCompact', { count: remainingMinutes })}`
+    : t('format.hoursCompact', { count: hours });
 }
 
 /** "12/34 min" — position/duration in whole minutes, for rows with a partially-listened episode. */
-export function formatProgress(positionSeconds: number, durationSeconds: number): string {
+export function formatProgress(positionSeconds: number, durationSeconds: number, t: TFunction): string {
   const positionMinutes = Math.round(positionSeconds / 60);
   const durationMinutes = Math.round(durationSeconds / 60);
-  return `${positionMinutes}/${durationMinutes} min`;
+  return t('format.progress', { position: positionMinutes, duration: durationMinutes });
 }
 
-export function formatDate(unixSeconds: number): string {
+/** `locale` should be the app's chosen language (i18n.language), not left to the device's OS
+ * locale — otherwise dates would keep showing in the device's language even after switching the
+ * in-app language. */
+export function formatDate(unixSeconds: number, locale: string): string {
   if (!unixSeconds) return '';
-  return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
+  return new Date(unixSeconds * 1000).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
   });
@@ -107,14 +116,14 @@ export function parseDescriptionSegments(html: string): DescriptionSegment[] {
 }
 
 /** "Today" / "Yesterday" / "Mon, Jan 5" — for the "YYYY-MM-DD" strings DayStats.date uses. */
-export function formatHistoryDay(dateString: string): string {
+export function formatHistoryDay(dateString: string, t: TFunction, locale: string): string {
   const target = new Date(`${dateString}T00:00:00`);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  if (target.getTime() === today.getTime()) return 'Today';
-  if (target.getTime() === yesterday.getTime()) return 'Yesterday';
-  return target.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  if (target.getTime() === today.getTime()) return t('history.today');
+  if (target.getTime() === yesterday.getTime()) return t('history.yesterday');
+  return target.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
 }

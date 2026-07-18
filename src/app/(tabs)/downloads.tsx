@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,6 +36,7 @@ function toPlayableEpisode(item: DownloadedEpisode) {
 export default function DownloadsScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { t, i18n } = useTranslation();
   const { downloads, removeDownload, deleteAllListened, deleteAll } = useDownloads();
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
   const { isQueued, addEpisode, removeEpisode } = useQueue();
@@ -105,12 +107,12 @@ export default function DownloadsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ThemedView style={styles.titleRow}>
           <ThemedText type="title" numberOfLines={1} style={styles.title}>
-            Downloads
+            {t('downloads.title')}
           </ThemedText>
           {downloads.length > 0 && (
             <Pressable onPress={handleDeletePress} hitSlop={8} style={styles.deleteAllButton}>
               <ThemedText type="smallBold" themeColor="accent">
-                Delete
+                {t('downloads.delete')}
               </ThemedText>
             </Pressable>
           )}
@@ -119,7 +121,7 @@ export default function DownloadsScreen() {
         {downloads.length > 0 && (
           <Pressable onPress={() => setStorageSheetVisible(true)} hitSlop={8} style={styles.storageRow}>
             <ThemedText type="small" themeColor="textSecondary">
-              {`${downloads.length} episode${downloads.length === 1 ? '' : 's'} · ${formatFileSize(allSize)} used`}
+              {t('downloads.episodesUsed', { count: downloads.length, size: formatFileSize(allSize) })}
             </ThemedText>
             <Ionicons name="chevron-forward-outline" color={theme.textSecondary} size={14} />
           </Pressable>
@@ -134,7 +136,7 @@ export default function DownloadsScreen() {
           ]}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-              No downloads yet — download an episode to listen offline.
+              {t('downloads.empty')}
             </ThemedText>
           }
           ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
@@ -151,10 +153,10 @@ export default function DownloadsScreen() {
             const queued = isCurrent || isQueued(item.episodeId);
             const durationLabel =
               isCurrent && status.duration > 0
-                ? formatProgress(status.currentTime, status.duration)
+                ? formatProgress(status.currentTime, status.duration, t)
                 : item.position > 0 && !item.isFinished && item.durationSeconds > 0
-                  ? formatProgress(item.position, item.durationSeconds)
-                  : formatDuration(item.durationSeconds);
+                  ? formatProgress(item.position, item.durationSeconds, t)
+                  : formatDuration(item.durationSeconds, t);
 
             return (
               <ThemedView style={[styles.row, item.isFinished && styles.rowFinished]}>
@@ -168,7 +170,7 @@ export default function DownloadsScreen() {
                     </ThemedText>
                     <ThemedText numberOfLines={2}>{item.episodeTitle}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {[durationLabel, formatDate(item.downloadedAt), formatFileSize(item.fileSizeBytes)]
+                      {[durationLabel, formatDate(item.downloadedAt, i18n.language), formatFileSize(item.fileSizeBytes)]
                         .filter(Boolean)
                         .join(' · ')}
                     </ThemedText>
@@ -200,7 +202,7 @@ export default function DownloadsScreen() {
 
       <ModalSheet visible={deleteMenuVisible} onClose={() => setDeleteMenuVisible(false)} contentStyle={styles.sheet}>
         <ThemedText type="subtitle" style={styles.centerText}>
-          Delete podcasts
+          {t('downloads.deletePodcastsTitle')}
         </ThemedText>
         <Pressable
           onPress={() => {
@@ -211,7 +213,7 @@ export default function DownloadsScreen() {
           style={[styles.deleteOutlineButton, { borderColor: theme.danger, opacity: listenedDownloads.length === 0 ? 0.4 : 1 }]}>
           <Ionicons name="trash-outline" color={theme.danger} size={16} />
           <ThemedText type="smallBold" themeColor="danger">
-            {`Only Listened (${listenedDownloads.length} ep, ${formatFileSize(listenedSize)})`}
+            {t('downloads.onlyListened', { count: listenedDownloads.length, size: formatFileSize(listenedSize) })}
           </ThemedText>
         </Pressable>
         <Pressable
@@ -223,7 +225,7 @@ export default function DownloadsScreen() {
           style={[styles.deleteFilledButton, { backgroundColor: theme.danger, opacity: downloads.length === 0 ? 0.4 : 1 }]}>
           <Ionicons name="trash-outline" color="#FFFFFF" size={16} />
           <ThemedText type="smallBold" style={styles.whiteText}>
-            {`All Downloaded (${downloads.length} ep, ${formatFileSize(allSize)})`}
+            {t('downloads.allDownloaded', { count: downloads.length, size: formatFileSize(allSize) })}
           </ThemedText>
         </Pressable>
       </ModalSheet>
@@ -233,10 +235,10 @@ export default function DownloadsScreen() {
         onClose={() => setStorageSheetVisible(false)}
         contentStyle={styles.sheet}>
         <ThemedText type="subtitle" style={styles.centerText}>
-          Storage
+          {t('downloads.storageTitle')}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-          {`${downloads.length} episode${downloads.length === 1 ? '' : 's'} · ${formatFileSize(allSize)} total`}
+          {t('downloads.storageTotal', { count: downloads.length, size: formatFileSize(allSize) })}
         </ThemedText>
         <FlatList
           data={storageByPodcast}
@@ -249,7 +251,7 @@ export default function DownloadsScreen() {
               <ThemedView style={styles.rowText}>
                 <ThemedText numberOfLines={1}>{item.podcastTitle}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {`${item.episodeCount} episode${item.episodeCount === 1 ? '' : 's'}`}
+                  {t('downloads.episodeCount', { count: item.episodeCount })}
                 </ThemedText>
               </ThemedView>
               <ThemedText type="smallBold">{formatFileSize(item.totalBytes)}</ThemedText>

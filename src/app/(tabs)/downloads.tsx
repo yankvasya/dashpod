@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet } from 'react-native';
+import Reanimated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EpisodeDetailSheet } from '@/components/EpisodeDetailSheet';
@@ -177,10 +178,14 @@ export default function DownloadsScreen() {
                   : formatDuration(item.durationSeconds, t);
 
             return (
-              <ThemedView style={[styles.row, item.isFinished && styles.rowFinished]}>
-                <Pressable
-                  style={styles.rowMain}
-                  onPress={() => handleViewEpisode(item)}>
+              <Reanimated.View
+                entering={FadeIn.duration(200)}
+                exiting={FadeOut.duration(200)}
+                layout={LinearTransition.duration(200)}>
+                <ThemedView style={[styles.row, item.isFinished && styles.rowFinished]}>
+                  <Pressable
+                    style={styles.rowMain}
+                    onPress={() => handleViewEpisode(item)}>
                   <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
                   <ThemedView style={styles.rowText}>
                     <ThemedText numberOfLines={1} themeColor="textSecondary" type="small">
@@ -206,13 +211,14 @@ export default function DownloadsScreen() {
                   style={[styles.iconButton, { backgroundColor: queued ? theme.accent : 'transparent' }]}>
                   <Ionicons name="list-outline" color={queued ? theme.background : theme.textSecondary} size={18} />
                 </Pressable>
-                <EpisodePlayButton
-                  playing={isCurrent && status.playing}
-                  loading={isLoading}
-                  progress={progress}
-                  onPress={() => handlePlayPause(item)}
-                />
-              </ThemedView>
+                  <EpisodePlayButton
+                    playing={isCurrent && status.playing}
+                    loading={isLoading}
+                    progress={progress}
+                    onPress={() => handlePlayPause(item)}
+                  />
+                </ThemedView>
+              </Reanimated.View>
             );
           }}
         />

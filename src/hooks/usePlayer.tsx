@@ -273,7 +273,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // Exclude the currently-playing episode itself — if the user queued the episode they're
     // already listening to, it shouldn't be treated as "next" until something else is playing.
     const next = queue.queue.find((item) => item.episodeId !== nowPlaying?.episode.id);
-    if (!next) return;
+    if (!next) {
+      // Nothing queued to advance to — this only actually runs from the auto-advance-on-finish
+      // path (the player screen's own Next button is disabled via hasNext when there's no next
+      // item), so it means playback just ended with nothing lined up. Clear the player instead of
+      // leaving it sitting on the finished episode: player.tsx's own effect closes the full-screen
+      // player once nowPlaying goes null, and the mini player hides the same way.
+      setNowPlaying(null);
+      return;
+    }
     queue.markPlayed(next.episodeId);
     const localUri = downloads.getDownloadedUri(next.episodeId);
     const episode = toPlayableEpisode(next);

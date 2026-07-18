@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EpisodeDetailSheet } from '@/components/EpisodeDetailSheet';
 import { ModalSheet } from '@/components/ModalSheet';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ThemedText } from '@/components/themed-text';
@@ -42,6 +43,7 @@ export default function DownloadsScreen() {
   const { isQueued, addEpisode, removeEpisode } = useQueue();
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
   const [storageSheetVisible, setStorageSheetVisible] = useState(false);
+  const [detailEpisode, setDetailEpisode] = useState<DownloadedEpisode | null>(null);
 
   const listenedDownloads = downloads.filter((item) => item.isFinished);
   const listenedSize = listenedDownloads.reduce((sum, item) => sum + item.fileSizeBytes, 0);
@@ -84,9 +86,14 @@ export default function DownloadsScreen() {
   }
 
   function handleViewEpisode(item: DownloadedEpisode) {
+    setDetailEpisode(item);
+  }
+
+  function handleOpenPlayer(item: DownloadedEpisode) {
     if (nowPlaying?.episode.id !== item.episodeId) {
       loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
     }
+    setDetailEpisode(null);
     router.push('/player');
   }
 
@@ -101,6 +108,17 @@ export default function DownloadsScreen() {
   function handleDeletePress() {
     setDeleteMenuVisible(true);
   }
+
+  const detailIsCurrent = detailEpisode ? nowPlaying?.episode.id === detailEpisode.episodeId : false;
+  const detailProgress = detailEpisode
+    ? detailIsCurrent
+      ? status.duration > 0
+        ? status.currentTime / status.duration
+        : 0
+      : detailEpisode.durationSeconds > 0
+        ? detailEpisode.position / detailEpisode.durationSeconds
+        : 0
+    : 0;
 
   return (
     <ThemedView style={styles.container}>
@@ -259,6 +277,28 @@ export default function DownloadsScreen() {
           )}
         />
       </ModalSheet>
+
+      <EpisodeDetailSheet
+        visible={detailEpisode != null}
+        episode={
+          detailEpisode
+            ? {
+                title: detailEpisode.episodeTitle,
+                podcastTitle: detailEpisode.podcastTitle,
+                artworkUrl: detailEpisode.artworkUrl,
+                description: detailEpisode.description,
+                durationSeconds: detailEpisode.durationSeconds,
+                publishedAt: detailEpisode.publishedAt,
+              }
+            : null
+        }
+        playing={detailIsCurrent && status.playing}
+        loading={detailIsCurrent && (episodeLoading || status.isBuffering)}
+        progress={detailProgress}
+        onPlayPause={() => detailEpisode && handlePlayPause(detailEpisode)}
+        onOpenPlayer={() => detailEpisode && handleOpenPlayer(detailEpisode)}
+        onClose={() => setDetailEpisode(null)}
+      />
     </ThemedView>
   );
 }

@@ -27,6 +27,15 @@ export default function UpdateBanner() {
   const [installing, setInstalling] = useState(false);
   const [progress, setProgress] = useState(0);
   const translateX = useSharedValue(0);
+  // Must run unconditionally on every render (Rules of Hooks) — this used to sit after the
+  // `!updateAvailable` early return below, which worked fine until the very first time an update
+  // actually became available: the component would then call one more hook than it had on every
+  // previous render of the same instance, and React throws ("Rendered more hooks than during the
+  // previous render") rather than rendering the banner. Crashed the whole app on launch as soon
+  // as autoCheckForUpdates found a real update for the first time.
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   if (!updateAvailable) return null;
 
@@ -64,10 +73,6 @@ export default function UpdateBanner() {
         translateX.value = withTiming(0);
       }
     });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
 
   return (
     <View style={[styles.container, { top: insets.top }]}>

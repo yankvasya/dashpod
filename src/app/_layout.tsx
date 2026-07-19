@@ -15,11 +15,11 @@ import { Colors } from '@/constants/theme';
 import { migrateDbIfNeeded } from '@/db/database';
 import '@/i18n';
 import { AppUpdateProvider } from '@/hooks/useAppUpdate';
-import { DownloadsProvider } from '@/hooks/useDownloads';
+import { DownloadsProvider, useDownloads } from '@/hooks/useDownloads';
 import { PlayerProvider } from '@/hooks/usePlayer';
-import { QueueProvider } from '@/hooks/useQueue';
+import { QueueProvider, useQueue } from '@/hooks/useQueue';
 import { SettingsProvider, useSettings } from '@/hooks/useSettings';
-import { SubscriptionsProvider } from '@/hooks/useSubscriptions';
+import { SubscriptionsProvider, useSubscriptions } from '@/hooks/useSubscriptions';
 import { configureAudioSession } from '@/services/audio';
 
 SplashScreen.preventAutoHideAsync();
@@ -55,12 +55,12 @@ function RootLayoutContent() {
 
   return (
     <ThemeProvider value={Colors[themeId].isDark ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
       <AppUpdateProvider>
         <SubscriptionsProvider>
           <DownloadsProvider>
             <QueueProvider>
               <PlayerProvider>
+                <AppReadyGate />
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="(tabs)" />
                 </Stack>
@@ -75,6 +75,19 @@ function RootLayoutContent() {
       <ThemeTransitionOverlay background={Colors[themeId].background} />
     </ThemeProvider>
   );
+}
+
+/** Holds the splash overlay up until every provider a first-launch tab could read from has
+ * finished its initial SQLite load — not just fonts. Needs to live inside all of them (rather
+ * than alongside RootLayoutContent's other top-level children) purely to read their `loading`
+ * flags; see AnimatedSplashOverlay for why this matters. */
+function AppReadyGate() {
+  const { loading: settingsLoading } = useSettings();
+  const { loading: subscriptionsLoading } = useSubscriptions();
+  const { loading: downloadsLoading } = useDownloads();
+  const { loading: queueLoading } = useQueue();
+  const ready = !settingsLoading && !subscriptionsLoading && !downloadsLoading && !queueLoading;
+  return <AnimatedSplashOverlay ready={ready} />;
 }
 
 const styles = StyleSheet.create({

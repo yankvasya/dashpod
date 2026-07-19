@@ -1,15 +1,27 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 const DURATION = 600;
 
-export function AnimatedSplashOverlay() {
+/** `ready` should stay false until every screen the user could land on first has its data
+ * already loaded (subscriptions, downloads, queue, settings) — see AppReadyGate in _layout.tsx.
+ * Without this, the splash used to hide as soon as fonts were ready, well before those async
+ * SQLite queries resolved, so whichever tab was visible would render empty and then visibly pop
+ * in a moment later. Holding the splash a bit longer means that pop-in happens underneath it
+ * instead of in front of the user. */
+export function AnimatedSplashOverlay({ ready }: { ready: boolean }) {
   const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(true);
+  const [laidOut, setLaidOut] = useState(false);
+
+  useEffect(() => {
+    if (!ready || !laidOut || animate) return;
+    SplashScreen.hideAsync().finally(() => setAnimate(true));
+  }, [ready, laidOut, animate]);
 
   if (!visible) return null;
 
@@ -46,13 +58,7 @@ export function AnimatedSplashOverlay() {
       {image}
     </Animated.View>
   ) : (
-    <View
-      onLayout={() => {
-        SplashScreen.hideAsync().finally(() => {
-          setAnimate(true);
-        });
-      }}
-      style={styles.splashOverlay}>
+    <View onLayout={() => setLaidOut(true)} style={styles.splashOverlay}>
       {image}
     </View>
   );

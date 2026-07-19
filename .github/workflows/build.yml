@@ -55,7 +55,7 @@ jobs:
 
       - name: Download APK
         run: |
-          apk_name="dashpod-${{ steps.version.outputs.version }}-${{ steps.version.outputs.stage }}.apk"
+          apk_name="dashpod-${{ steps.version.outputs.version }}-${{ steps.version.outputs.stage }}.${{ github.run_number }}.apk"
           curl -L -o "$apk_name" "${{ steps.build.outputs.build_url }}"
           echo "apk_name=$apk_name" >> "$GITHUB_ENV"
 

@@ -79,11 +79,11 @@ interface PlayerContextValue {
   cancelSleepTimer: () => void;
   /** True while the sleep timer's volume ramp-down is in progress (fires just before it pauses). */
   isFadingOut: boolean;
-  /** True exactly while the full player screen (player.tsx) is mounted — set directly from that
-   * screen's own mount/unmount lifecycle rather than derived from the router's pathname, since the
-   * pathname-based check this replaced didn't reliably hide the mini player over a modal route. */
-  isPlayerScreenOpen: boolean;
-  setPlayerScreenOpen: (open: boolean) => void;
+  /** True while the full player is expanded (morphed open from the mini player) rather than
+   * collapsed to the mini bar — see PlayerSheet, the single component that renders both states. */
+  playerExpanded: boolean;
+  expandPlayer: () => void;
+  collapsePlayer: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -101,7 +101,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [playbackRate, setPlaybackRateState] = useState(1);
   const [hasPrevious, setHasPrevious] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [isPlayerScreenOpen, setPlayerScreenOpen] = useState(false);
+  const [playerExpanded, setPlayerExpanded] = useState(false);
+  const expandPlayer = useCallback(() => setPlayerExpanded(true), []);
+  const collapsePlayer = useCallback(() => setPlayerExpanded(false), []);
+  // Whenever there's nothing playing (including the very first launch), the sheet should be
+  // collapsed by default — otherwise the next episode to start would open already expanded.
+  useEffect(() => {
+    if (!nowPlaying) setPlayerExpanded(false);
+  }, [nowPlaying]);
   const segmentRef = useRef<ListeningSegment | null>(null);
   const nowPlayingRef = useRef<NowPlaying | null>(null);
   const queueRef = useRef(queue);
@@ -423,8 +430,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setSleepTimerEndOfEpisode,
       cancelSleepTimer,
       isFadingOut,
-      isPlayerScreenOpen,
-      setPlayerScreenOpen,
+      playerExpanded,
+      expandPlayer,
+      collapsePlayer,
     }),
     [
       nowPlaying,
@@ -445,7 +453,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setSleepTimerEndOfEpisode,
       isFadingOut,
       cancelSleepTimer,
-      isPlayerScreenOpen,
+      playerExpanded,
+      expandPlayer,
+      collapsePlayer,
     ]
   );
 

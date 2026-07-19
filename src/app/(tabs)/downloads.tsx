@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet } from 'react-native';
@@ -36,11 +35,10 @@ function toPlayableEpisode(item: DownloadedEpisode) {
 }
 
 export default function DownloadsScreen() {
-  const router = useRouter();
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const { downloads, removeDownload, deleteAllListened, deleteAll } = useDownloads();
-  const { nowPlaying, status, episodeLoading, loadEpisode, play, pause } = usePlayer();
+  const { nowPlaying, status, episodeLoading, loadEpisode, play, pause, expandPlayer } = usePlayer();
   const { isQueued, addEpisode, removeEpisode } = useQueue();
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
   const [storageSheetVisible, setStorageSheetVisible] = useState(false);
@@ -95,7 +93,7 @@ export default function DownloadsScreen() {
       loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
     }
     setDetailEpisode(null);
-    router.push('/player');
+    expandPlayer();
   }
 
   async function handleQueuePress(item: DownloadedEpisode) {

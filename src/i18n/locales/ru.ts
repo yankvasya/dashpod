@@ -56,6 +56,7 @@ const ru = {
     episodeCount_few: '{{count}} эпизода',
     episodeCount_other: '{{count}} эпизодов',
     downloadingEpisode: 'Загрузка: {{title}}',
+    downloadingCount: 'Загрузка эпизодов: {{count}}',
   },
   queue: {
     title: 'Очередь',

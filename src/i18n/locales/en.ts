@@ -49,6 +49,7 @@ export default {
     episodeCount_one: '{{count}} episode',
     episodeCount_other: '{{count}} episodes',
     downloadingEpisode: 'Downloading {{title}}',
+    downloadingCount: 'Downloading {{count}} episodes',
   },
   queue: {
     title: 'Queue',

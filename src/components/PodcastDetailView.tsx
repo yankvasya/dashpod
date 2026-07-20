@@ -4,6 +4,13 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Reanimated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 
 import { DescriptionText } from '@/components/DescriptionText';
 import { EpisodeDetailSheet } from '@/components/EpisodeDetailSheet';
@@ -25,6 +32,11 @@ interface PodcastDetailViewProps {
   feedUrl: string;
   onBack: () => void;
 }
+
+// Scroll range (px) over which the compact header fades in, roughly matching where the full
+// artwork+title block scrolls out from under the top bar.
+const COLLAPSE_START = 150;
+const COLLAPSE_END = 210;
 
 /** Rendered in place within a tab screen (not a routed push) so the native tab bar underneath
  * never disappears — see index.tsx / my-podcasts.tsx, which swap this in via local state. */
@@ -49,6 +61,20 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
     useDownloads();
   const { isQueued, addEpisode, removeEpisode } = useQueue();
   const [detailEpisode, setDetailEpisode] = useState<(typeof episodes)[number] | null>(null);
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  // Collapsing header: as the full artwork/title block scrolls off, a compact title (with mini
+  // artwork) fades in between the Back and Up buttons — iOS Music-style. Kept as a plain opacity
+  // fade tied to scroll position on the UI thread (not React state) so it tracks the gesture
+  // directly instead of lagging a frame behind.
+  const compactHeaderStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [COLLAPSE_START, COLLAPSE_END], [0, 1], Extrapolation.CLAMP),
+    transform: [
+      { translateY: interpolate(scrollY.value, [COLLAPSE_START, COLLAPSE_END], [6, 0], Extrapolation.CLAMP) },
+    ],
+  }));
 
   function resolveForPlayback(episode: (typeof episodes)[number]) {
     const localUri = 'id' in episode && episode.id != null ? getDownloadedUri(episode.id) : null;
@@ -140,6 +166,16 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
             {t('common.back')}
           </ThemedText>
         </Pressable>
+        <Reanimated.View style={[styles.compactHeader, compactHeaderStyle]} pointerEvents="none">
+          {podcast && (
+            <>
+              <Image source={{ uri: podcast.artworkUrl }} style={styles.compactArtwork} />
+              <ThemedText type="smallBold" numberOfLines={1} style={styles.compactTitle}>
+                {podcast.title}
+              </ThemedText>
+            </>
+          )}
+        </Reanimated.View>
         <Pressable
           onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
           hitSlop={8}
@@ -159,10 +195,12 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
           ))}
         </ScrollView>
       ) : (
-        <FlatList
+        <Reanimated.FlatList
         ref={listRef}
         data={episodes}
         keyExtractor={(item) => item.guid}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         contentContainerStyle={[
           styles.listContent,
           nowPlaying && { paddingBottom: BottomTabInset + Spacing.four + MiniPlayerHeight },
@@ -339,17 +377,34 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
+    gap: Spacing.two,
   },
   backButton: {
     alignSelf: 'flex-start',
+    flexShrink: 0,
+  },
+  compactHeader: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+  },
+  compactArtwork: {
+    width: 24,
+    height: 24,
+    borderRadius: Spacing.half,
+  },
+  compactTitle: {
+    flexShrink: 1,
   },
   upButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.half,
+    flexShrink: 0,
   },
   listContent: {
     paddingHorizontal: Spacing.four,

@@ -119,7 +119,8 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
             <Switch
               value={allowMobileDataDownloads}
               onValueChange={setAllowMobileDataDownloads}
-              trackColor={{ true: theme.accent }}
+              trackColor={{ false: theme.backgroundSelected, true: theme.accent }}
+              thumbColor="#FFFFFF"
             />
           </View>
         </ThemedView>
@@ -140,7 +141,8 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
             <Switch
               value={autoCheckForUpdates}
               onValueChange={setAutoCheckForUpdates}
-              trackColor={{ true: theme.accent }}
+              trackColor={{ false: theme.backgroundSelected, true: theme.accent }}
+              thumbColor="#FFFFFF"
             />
           </View>
           <Pressable

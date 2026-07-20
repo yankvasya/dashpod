@@ -49,22 +49,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [autoCheckForUpdates, setAutoCheckForUpdatesState] = useState(DEFAULT_AUTO_CHECK_FOR_UPDATES);
 
   useEffect(() => {
-    getAllSettings(db).then((settings) => {
-      if (VALID_THEME_IDS.includes(settings[THEME_KEY] as AppThemeId)) {
-        setThemeIdState(settings[THEME_KEY] as AppThemeId);
-      }
-      if (settings[LANGUAGE_KEY] === 'en' || settings[LANGUAGE_KEY] === 'ru') {
-        setLanguageIdState(settings[LANGUAGE_KEY]);
-        i18n.changeLanguage(settings[LANGUAGE_KEY]);
-      }
-      if (settings[ALLOW_MOBILE_DATA_DOWNLOADS_KEY] != null) {
-        setAllowMobileDataDownloadsState(settings[ALLOW_MOBILE_DATA_DOWNLOADS_KEY] === '1');
-      }
-      if (settings[AUTO_CHECK_FOR_UPDATES_KEY] != null) {
-        setAutoCheckForUpdatesState(settings[AUTO_CHECK_FOR_UPDATES_KEY] === '1');
-      }
-      setLoading(false);
-    });
+    getAllSettings(db)
+      .then((settings) => {
+        if (VALID_THEME_IDS.includes(settings[THEME_KEY] as AppThemeId)) {
+          setThemeIdState(settings[THEME_KEY] as AppThemeId);
+        }
+        if (settings[LANGUAGE_KEY] === 'en' || settings[LANGUAGE_KEY] === 'ru') {
+          setLanguageIdState(settings[LANGUAGE_KEY]);
+          i18n.changeLanguage(settings[LANGUAGE_KEY]);
+        }
+        if (settings[ALLOW_MOBILE_DATA_DOWNLOADS_KEY] != null) {
+          setAllowMobileDataDownloadsState(settings[ALLOW_MOBILE_DATA_DOWNLOADS_KEY] === '1');
+        }
+        if (settings[AUTO_CHECK_FOR_UPDATES_KEY] != null) {
+          setAutoCheckForUpdatesState(settings[AUTO_CHECK_FOR_UPDATES_KEY] === '1');
+        }
+      })
+      // Falls back to defaults on failure — still needs to clear `loading` no matter what,
+      // since other screens (and now the splash-hide gate in _layout.tsx) wait on it.
+      .finally(() => setLoading(false));
   }, [db]);
 
   const setThemeId = useCallback(

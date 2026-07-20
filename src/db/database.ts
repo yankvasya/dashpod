@@ -42,6 +42,16 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   } catch {
     // Column already exists — safe to ignore.
   }
+  try {
+    await db.execAsync('ALTER TABLE episodes ADD COLUMN transcript_url TEXT');
+  } catch {
+    // Column already exists — safe to ignore.
+  }
+  try {
+    await db.execAsync('ALTER TABLE episodes ADD COLUMN transcript_type TEXT');
+  } catch {
+    // Column already exists — safe to ignore.
+  }
 }
 
 async function runVersionedMigration(db: SQLiteDatabase) {

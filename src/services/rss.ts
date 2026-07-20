@@ -28,6 +28,31 @@ function hrefValue(value: XmlNode): string | null {
   return null;
 }
 
+type TranscriptNode = { '@_url'?: string; '@_type'?: string } | undefined;
+
+// Preference order when a feed publishes more than one `<podcast:transcript>` per episode —
+// favor formats that are plain readable text over ones needing heavier parsing, html last since
+// it may include page chrome beyond just the transcript.
+const TRANSCRIPT_TYPE_PRIORITY = ['text/vtt', 'application/srt', 'application/x-subrip', 'text/plain', 'application/json', 'text/html'];
+
+/** Podcasting 2.0's `<podcast:transcript url="..." type="..."/>` — repeated tags become an array,
+ * a single one stays a plain object, so both shapes need handling. Picks the best available type
+ * per TRANSCRIPT_TYPE_PRIORITY; returns null if the feed doesn't publish one at all. */
+function parseTranscript(node: TranscriptNode | TranscriptNode[]): { url: string; type: string } | null {
+  const candidates = (Array.isArray(node) ? node : node ? [node] : [])
+    .map((entry) => ({ url: entry?.['@_url'], type: entry?.['@_type'] ?? 'text/plain' }))
+    .filter((entry): entry is { url: string; type: string } => Boolean(entry.url));
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => {
+    const aRank = TRANSCRIPT_TYPE_PRIORITY.indexOf(a.type);
+    const bRank = TRANSCRIPT_TYPE_PRIORITY.indexOf(b.type);
+    return (aRank === -1 ? TRANSCRIPT_TYPE_PRIORITY.length : aRank) - (bRank === -1 ? TRANSCRIPT_TYPE_PRIORITY.length : bRank);
+  });
+  return candidates[0];
+}
+
 function parseDurationToSeconds(raw: XmlNode): number {
   const text = textValue(raw).trim();
   if (!text) return 0;
@@ -85,16 +110,21 @@ export async function fetchPodcastFeed(feedUrl: string): Promise<ParsedFeed> {
       (entry): entry is { item: Record<string, unknown>; audioUrl: string; guid: string; fileSizeBytes: number | null } =>
         Boolean(entry.audioUrl && entry.guid)
     )
-    .map(({ item, audioUrl, guid, fileSizeBytes }) => ({
-      guid,
-      title: textValue(item.title as XmlNode) || 'Untitled Episode',
-      description: textValue(item.description as XmlNode) || textValue(item['itunes:summary'] as XmlNode),
-      audioUrl,
-      durationSeconds: parseDurationToSeconds(item['itunes:duration'] as XmlNode),
-      publishedAt: parsePublishedAt(item.pubDate as string | undefined),
-      artworkUrl: hrefValue(item['itunes:image'] as XmlNode),
-      fileSizeBytes,
-    }));
+    .map(({ item, audioUrl, guid, fileSizeBytes }) => {
+      const transcript = parseTranscript(item['podcast:transcript'] as TranscriptNode | TranscriptNode[]);
+      return {
+        guid,
+        title: textValue(item.title as XmlNode) || 'Untitled Episode',
+        description: textValue(item.description as XmlNode) || textValue(item['itunes:summary'] as XmlNode),
+        audioUrl,
+        durationSeconds: parseDurationToSeconds(item['itunes:duration'] as XmlNode),
+        publishedAt: parsePublishedAt(item.pubDate as string | undefined),
+        artworkUrl: hrefValue(item['itunes:image'] as XmlNode),
+        fileSizeBytes,
+        transcriptUrl: transcript?.url ?? null,
+        transcriptType: transcript?.type ?? null,
+      };
+    });
 
   return { podcast, episodes };
 }

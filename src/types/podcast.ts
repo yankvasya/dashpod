@@ -22,6 +22,11 @@ export interface Episode {
   artworkUrl: string | null;
   /** The feed's declared enclosure size, shown before downloading — null when the feed omits it. */
   fileSizeBytes: number | null;
+  /** Podcasting 2.0 `<podcast:transcript>` URL, when the feed publishes one — null otherwise. */
+  transcriptUrl: string | null;
+  /** MIME type of transcriptUrl's content (e.g. text/vtt, application/srt, text/html) — tells
+   * services/transcript.ts how to turn it into readable text. */
+  transcriptType: string | null;
 }
 
 /** A recorded listening session for an episode. */
@@ -78,6 +83,8 @@ export interface QueuedEpisode {
   /** Saved playback position in seconds, if this episode has been started. */
   playbackPosition: number;
   isFinished: boolean;
+  transcriptUrl: string | null;
+  transcriptType: string | null;
 }
 
 /** A downloaded episode joined with its podcast/episode/playback info, for the Downloads list. */
@@ -97,6 +104,8 @@ export interface DownloadedEpisode {
   publishedAt: number;
   position: number;
   isFinished: boolean;
+  transcriptUrl: string | null;
+  transcriptType: string | null;
 }
 
 /** Aggregated listening statistics for a single day. */

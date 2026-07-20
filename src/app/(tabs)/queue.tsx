@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EpisodeDetailSheet } from '@/components/EpisodeDetailSheet';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
+import { ShimmerView } from '@/components/ShimmerView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
@@ -36,7 +37,7 @@ function toPlayableEpisode(item: QueuedEpisode) {
 export default function QueueScreen() {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { queue, removeEpisode, markPlayed, reorder, playedFromQueue, clearPlayedFromQueue } = useQueue();
+  const { queue, loading, removeEpisode, markPlayed, reorder, playedFromQueue, clearPlayedFromQueue } = useQueue();
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause, expandPlayer } = usePlayer();
   const [playedCollapsed, setPlayedCollapsed] = useState(false);
   const [detailEpisode, setDetailEpisode] = useState<QueuedEpisode | null>(null);
@@ -155,6 +156,8 @@ export default function QueueScreen() {
     );
   }
 
+  const showSkeleton = loading && queue.length === 0 && !nowPlaying;
+
   const nowPlayingArtwork = nowPlaying
     ? (nowPlaying.episode.artworkUrl ?? nowPlaying.podcastArtworkUrl)
     : null;
@@ -178,6 +181,13 @@ export default function QueueScreen() {
           {t('queue.title')}
         </ThemedText>
 
+        {showSkeleton ? (
+          <ThemedView style={styles.listContent}>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <SkeletonQueueRow key={index} />
+            ))}
+          </ThemedView>
+        ) : (
         <DraggableFlatList
           data={upNext}
           keyExtractor={(item) => String(item.episodeId)}
@@ -260,6 +270,7 @@ export default function QueueScreen() {
           ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
           renderItem={renderItem}
         />
+        )}
       </SafeAreaView>
 
       <EpisodeDetailSheet
@@ -283,6 +294,19 @@ export default function QueueScreen() {
         onOpenPlayer={() => detailEpisode && handleOpenPlayer(detailEpisode)}
         onClose={() => setDetailEpisode(null)}
       />
+    </ThemedView>
+  );
+}
+
+function SkeletonQueueRow() {
+  return (
+    <ThemedView style={styles.row}>
+      <ThemedView style={styles.dragHandle} />
+      <ShimmerView style={styles.artwork} />
+      <ThemedView style={styles.rowText}>
+        <ShimmerView style={styles.skeletonTitle} />
+        <ShimmerView style={styles.skeletonMeta} />
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -351,6 +375,16 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     gap: Spacing.half,
+  },
+  skeletonTitle: {
+    width: '70%',
+    height: 16,
+    borderRadius: Spacing.one,
+  },
+  skeletonMeta: {
+    width: '40%',
+    height: 12,
+    borderRadius: Spacing.one,
   },
   deleteButton: {
     padding: Spacing.one,

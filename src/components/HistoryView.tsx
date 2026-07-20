@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, SectionList, StyleSheet, TextInput } from 'react-native';
 
+import { ShimmerView } from '@/components/ShimmerView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, FontFamily, MiniPlayerHeight, Spacing } from '@/constants/theme';
@@ -51,6 +52,8 @@ export function HistoryView({ onBack }: { onBack: () => void }) {
       })
       .filter((section) => section.data.length > 0);
   }, [days, query, onlyFinished, t, i18n.language]);
+
+  const showSkeleton = loading && days.length === 0;
 
   return (
     <>
@@ -101,6 +104,13 @@ export function HistoryView({ onBack }: { onBack: () => void }) {
         </Pressable>
       </ThemedView>
 
+      {showSkeleton ? (
+        <ThemedView style={styles.listContent}>
+          {Array.from({ length: 6 }).map((_, index) => (
+            <SkeletonHistoryRow key={index} />
+          ))}
+        </ThemedView>
+      ) : (
       <SectionList
         sections={sections}
         keyExtractor={(item, index) => `${item.episodeId}-${index}`}
@@ -139,7 +149,20 @@ export function HistoryView({ onBack }: { onBack: () => void }) {
           </ThemedView>
         )}
       />
+      )}
     </>
+  );
+}
+
+function SkeletonHistoryRow() {
+  return (
+    <ThemedView style={styles.row}>
+      <ShimmerView style={styles.artwork} />
+      <ThemedView style={styles.rowText}>
+        <ShimmerView style={styles.skeletonTitle} />
+        <ShimmerView style={styles.skeletonMeta} />
+      </ThemedView>
+    </ThemedView>
   );
 }
 
@@ -212,6 +235,16 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     gap: Spacing.half,
+  },
+  skeletonTitle: {
+    width: '70%',
+    height: 16,
+    borderRadius: Spacing.one,
+  },
+  skeletonMeta: {
+    width: '40%',
+    height: 12,
+    borderRadius: Spacing.one,
   },
   separator: {
     height: StyleSheet.hairlineWidth,

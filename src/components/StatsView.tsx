@@ -6,6 +6,7 @@ import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 
 import { CalendarMonthGrid } from '@/components/CalendarMonthGrid';
+import { ShimmerView } from '@/components/ShimmerView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
@@ -42,6 +43,7 @@ export function StatsView({ onBack }: { onBack: () => void }) {
   }, [range]);
 
   const { stats, loading } = usePodcastListeningStats(range);
+  const showSkeleton = loading && stats.length === 0;
 
   const totalMinutes = stats.reduce((sum, item) => sum + item.totalMinutes, 0);
   const pieData = stats.map((item, index) => ({
@@ -164,6 +166,16 @@ export function StatsView({ onBack }: { onBack: () => void }) {
         </ThemedView>
       )}
 
+      {showSkeleton ? (
+        <View style={styles.listContent}>
+          <View style={styles.chartContainer}>
+            <ShimmerView style={styles.chartSkeleton} />
+          </View>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <SkeletonStatsRow key={index} />
+          ))}
+        </View>
+      ) : (
       <FlatList
         data={stats}
         keyExtractor={(item) => String(item.podcastId)}
@@ -199,6 +211,7 @@ export function StatsView({ onBack }: { onBack: () => void }) {
         ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
         renderItem={renderPodcastRow}
       />
+      )}
 
       <CalendarMonthGrid
         visible={calendarVisible}
@@ -207,6 +220,19 @@ export function StatsView({ onBack }: { onBack: () => void }) {
         onClose={() => setCalendarVisible(false)}
       />
     </>
+  );
+}
+
+function SkeletonStatsRow() {
+  return (
+    <View style={styles.row}>
+      <View style={styles.swatchColumn} />
+      <ShimmerView style={styles.artwork} />
+      <ThemedView style={styles.rowText}>
+        <ShimmerView style={styles.skeletonTitle} />
+        <ShimmerView style={styles.skeletonMeta} />
+      </ThemedView>
+    </View>
   );
 }
 
@@ -262,6 +288,11 @@ const styles = StyleSheet.create({
   chartCenterText: {
     textAlign: 'center',
   },
+  chartSkeleton: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,6 +329,16 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     gap: Spacing.half,
+  },
+  skeletonTitle: {
+    width: '70%',
+    height: 16,
+    borderRadius: Spacing.one,
+  },
+  skeletonMeta: {
+    width: '40%',
+    height: 12,
+    borderRadius: Spacing.one,
   },
   episodeList: {
     paddingLeft: Spacing.four + 34 + Spacing.three,

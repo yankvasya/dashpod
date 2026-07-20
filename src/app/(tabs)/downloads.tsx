@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EpisodeDetailSheet } from '@/components/EpisodeDetailSheet';
 import { ModalSheet } from '@/components/ModalSheet';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
+import { ShimmerView } from '@/components/ShimmerView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
@@ -37,7 +38,7 @@ function toPlayableEpisode(item: DownloadedEpisode) {
 export default function DownloadsScreen() {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
-  const { downloads, removeDownload, deleteAllListened, deleteAll } = useDownloads();
+  const { downloads, loading, removeDownload, deleteAllListened, deleteAll } = useDownloads();
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause, expandPlayer } = usePlayer();
   const { isQueued, addEpisode, removeEpisode } = useQueue();
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
@@ -108,6 +109,8 @@ export default function DownloadsScreen() {
     setDeleteMenuVisible(true);
   }
 
+  const showSkeleton = loading && downloads.length === 0;
+
   const detailIsCurrent = detailEpisode ? nowPlaying?.episode.id === detailEpisode.episodeId : false;
   const detailProgress = detailEpisode
     ? detailIsCurrent
@@ -144,6 +147,13 @@ export default function DownloadsScreen() {
           </Pressable>
         )}
 
+        {showSkeleton ? (
+          <ThemedView style={styles.listContent}>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <SkeletonDownloadRow key={index} />
+            ))}
+          </ThemedView>
+        ) : (
         <FlatList
           data={downloads}
           keyExtractor={(item) => String(item.episodeId)}
@@ -220,6 +230,7 @@ export default function DownloadsScreen() {
             );
           }}
         />
+        )}
       </SafeAreaView>
 
       <ModalSheet visible={deleteMenuVisible} onClose={() => setDeleteMenuVisible(false)} contentStyle={styles.sheet}>
@@ -307,6 +318,18 @@ export default function DownloadsScreen() {
   );
 }
 
+function SkeletonDownloadRow() {
+  return (
+    <ThemedView style={styles.row}>
+      <ShimmerView style={styles.artwork} />
+      <ThemedView style={styles.rowText}>
+        <ShimmerView style={styles.skeletonTitle} />
+        <ShimmerView style={styles.skeletonMeta} />
+      </ThemedView>
+    </ThemedView>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -378,6 +401,16 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     gap: Spacing.half,
+  },
+  skeletonTitle: {
+    width: '70%',
+    height: 16,
+    borderRadius: Spacing.one,
+  },
+  skeletonMeta: {
+    width: '40%',
+    height: 12,
+    borderRadius: Spacing.one,
   },
   deleteButton: {
     padding: Spacing.one,

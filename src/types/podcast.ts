@@ -114,6 +114,7 @@ export interface EpisodeListeningSummary {
   podcastTitle: string;
   artworkUrl: string;
   totalMinutes: number;
+  isFinished: boolean;
 }
 
 /** Listening summary for a single podcast, optionally scoped to a period. */

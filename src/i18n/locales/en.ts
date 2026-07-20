@@ -76,6 +76,9 @@ export default {
   history: {
     title: 'History',
     empty: 'No listening history yet — start playing an episode to see it here.',
+    noResults: 'No episodes match your search.',
+    searchPlaceholder: 'Search history',
+    onlyFinished: 'Finished only',
     today: 'Today',
     yesterday: 'Yesterday',
   },

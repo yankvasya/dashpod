@@ -233,6 +233,7 @@ type DayStatsRow = {
   artwork_url: string;
   total_seconds: number;
   duration_seconds: number;
+  is_finished: number;
 };
 
 /** Groups raw per-episode-per-day rows into DayStats. Rewinding/replaying part of an episode
@@ -255,6 +256,7 @@ function mapDayStatsRows(rows: DayStatsRow[]): DayStats[] {
       podcastTitle: row.podcast_title,
       artworkUrl: row.artwork_url,
       totalMinutes: minutes,
+      isFinished: row.is_finished === 1,
     });
   }
   return Array.from(dayMap.values());
@@ -271,10 +273,12 @@ export async function getListeningHistory(db: SQLiteDatabase, range?: DateRange)
        p.title AS podcast_title,
        COALESCE(e.artwork_url, p.artwork_url) AS artwork_url,
        SUM(le.listened_seconds) AS total_seconds,
-       e.duration_seconds AS duration_seconds
+       e.duration_seconds AS duration_seconds,
+       COALESCE(ps.is_finished, 0) AS is_finished
      FROM listening_events le
      JOIN episodes e ON e.id = le.episode_id
      JOIN podcasts p ON p.id = e.podcast_id
+     LEFT JOIN playback_state ps ON ps.episode_id = e.id
      ${range ? 'WHERE le.started_at >= ? AND le.started_at < ?' : ''}
      GROUP BY date, e.id
      ORDER BY date DESC`,
@@ -301,6 +305,7 @@ export async function getPodcastListeningStats(
     episode_title: string;
     duration_seconds: number;
     total_seconds: number;
+    is_finished: number;
   }>(
     `SELECT
        p.id AS podcast_id,
@@ -309,10 +314,12 @@ export async function getPodcastListeningStats(
        e.id AS episode_id,
        e.title AS episode_title,
        e.duration_seconds AS duration_seconds,
-       SUM(le.listened_seconds) AS total_seconds
+       SUM(le.listened_seconds) AS total_seconds,
+       COALESCE(ps.is_finished, 0) AS is_finished
      FROM listening_events le
      JOIN episodes e ON e.id = le.episode_id
      JOIN podcasts p ON p.id = e.podcast_id
+     LEFT JOIN playback_state ps ON ps.episode_id = e.id
      ${range ? 'WHERE le.started_at >= ? AND le.started_at < ?' : ''}
      GROUP BY e.id`,
     range ? [range.startUnixSeconds, range.endUnixSeconds] : []
@@ -361,6 +368,7 @@ export async function getPodcastListeningStats(
       podcastTitle: row.podcast_title,
       artworkUrl: row.artwork_url,
       totalMinutes: minutes,
+      isFinished: row.is_finished === 1,
     });
   }
 

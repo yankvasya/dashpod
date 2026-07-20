@@ -1,10 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, SectionList, StyleSheet } from 'react-native';
+import { Pressable, SectionList, StyleSheet, TextInput } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
+import { BottomTabInset, FontFamily, MiniPlayerHeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useHistory } from '@/hooks/useHistory';
 import { usePlayer } from '@/hooks/usePlayer';
 import type { EpisodeListeningSummary } from '@/types/podcast';
@@ -19,15 +22,35 @@ interface HistorySection {
 /** Rendered in place within the More tab (not a routed push) — see more.tsx, which swaps this in
  * via local state, same pattern as PodcastDetailView. */
 export function HistoryView({ onBack }: { onBack: () => void }) {
+  const theme = useTheme();
   const { t, i18n } = useTranslation();
   const { days, loading } = useHistory();
   const { nowPlaying } = usePlayer();
+  const [query, setQuery] = useState('');
+  const [onlyFinished, setOnlyFinished] = useState(false);
 
-  const sections: HistorySection[] = days.map((day) => ({
-    title: formatHistoryDay(day.date, t, i18n.language),
-    totalMinutes: day.totalMinutes,
-    data: day.episodes,
-  }));
+  const isFiltering = query.trim().length > 0 || onlyFinished;
+
+  const sections: HistorySection[] = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return days
+      .map((day) => {
+        const episodes = day.episodes.filter((episode) => {
+          if (onlyFinished && !episode.isFinished) return false;
+          if (!needle) return true;
+          return (
+            episode.episodeTitle.toLowerCase().includes(needle) ||
+            episode.podcastTitle.toLowerCase().includes(needle)
+          );
+        });
+        return {
+          title: formatHistoryDay(day.date, t, i18n.language),
+          totalMinutes: episodes.reduce((sum, episode) => sum + episode.totalMinutes, 0),
+          data: episodes,
+        };
+      })
+      .filter((section) => section.data.length > 0);
+  }, [days, query, onlyFinished, t, i18n.language]);
 
   return (
     <>
@@ -40,6 +63,43 @@ export function HistoryView({ onBack }: { onBack: () => void }) {
       <ThemedText type="title" style={styles.title}>
         {t('history.title')}
       </ThemedText>
+
+      <ThemedView style={styles.filterBar}>
+        <ThemedView type="backgroundElement" style={styles.searchRow}>
+          <Ionicons name="search" size={16} color={theme.textSecondary} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder={t('history.searchPlaceholder')}
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, { color: theme.text }]}
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery('')} hitSlop={8}>
+              <Ionicons name="close-circle" size={16} color={theme.textSecondary} />
+            </Pressable>
+          )}
+        </ThemedView>
+
+        <Pressable
+          onPress={() => setOnlyFinished((value) => !value)}
+          style={[
+            styles.filterChip,
+            { backgroundColor: onlyFinished ? theme.accent : theme.backgroundElement },
+          ]}>
+          <Ionicons
+            name={onlyFinished ? 'checkmark-circle' : 'checkmark-circle-outline'}
+            size={16}
+            color={onlyFinished ? theme.background : theme.textSecondary}
+          />
+          <ThemedText
+            type="small"
+            style={{ color: onlyFinished ? theme.background : theme.text }}>
+            {t('history.onlyFinished')}
+          </ThemedText>
+        </Pressable>
+      </ThemedView>
 
       <SectionList
         sections={sections}
@@ -59,7 +119,7 @@ export function HistoryView({ onBack }: { onBack: () => void }) {
         ListEmptyComponent={
           !loading ? (
             <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-              {t('history.empty')}
+              {isFiltering ? t('history.noResults') : t('history.empty')}
             </ThemedText>
           ) : null
         }
@@ -94,6 +154,38 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.three,
+  },
+  filterBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.three,
+  },
+  searchRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  input: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: 16,
+    // Android's TextInput carries built-in EditText padding that iOS's equivalent doesn't have,
+    // making the same layout look wider/taller there. Zero it so both platforms match.
+    padding: 0,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
   },
   listContent: {
     paddingHorizontal: Spacing.four,

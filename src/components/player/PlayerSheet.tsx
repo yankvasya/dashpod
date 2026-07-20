@@ -20,6 +20,7 @@ import Reanimated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DescriptionText } from '@/components/DescriptionText';
+import { ModalSheet } from '@/components/ModalSheet';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { LoadingRing } from '@/components/player/LoadingRing';
 import { PlayPauseIcon } from '@/components/player/PlayPauseIcon';
@@ -33,6 +34,7 @@ import { BottomTabBarHeight, MiniPlayerHeight, Spacing } from '@/constants/theme
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayer } from '@/hooks/usePlayer';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
+import { fetchTranscriptText } from '@/services/transcript';
 
 const SKIP_SECONDS = 10;
 const EXPAND_DURATION = 320;
@@ -90,6 +92,13 @@ export function PlayerSheet() {
   const [speedModalVisible, setSpeedModalVisible] = useState(false);
   const [sleepTimerModalVisible, setSleepTimerModalVisible] = useState(false);
   const [artworkLoaded, setArtworkLoaded] = useState(false);
+  const [transcriptModalVisible, setTranscriptModalVisible] = useState(false);
+  const [transcriptText, setTranscriptText] = useState<string | null>(null);
+  const [transcriptLoading, setTranscriptLoading] = useState(false);
+  const [transcriptError, setTranscriptError] = useState(false);
+  // Tracks which episode's transcript is currently loaded/loading, so reopening the sheet for the
+  // same episode doesn't refetch, but switching episodes does.
+  const transcriptGuidRef = useRef<string | null>(null);
   const wasPlayingBeforeSeekRef = useRef(false);
   // seekTo()'s promise resolves once the seek command is issued, not once a remote/streaming
   // source has actually finished re-buffering to that position — so status.currentTime can still
@@ -207,6 +216,25 @@ export function PlayerSheet() {
     router.push({ pathname: '/my-podcasts', params: { openFeedUrl: podcastFeedUrl } });
   }
 
+  async function handleOpenTranscript() {
+    setTranscriptModalVisible(true);
+    if (!nowPlaying) return;
+    const { transcriptUrl, transcriptType, guid } = nowPlaying.episode;
+    if (!transcriptUrl || !transcriptType) return;
+    if (transcriptGuidRef.current === guid && (transcriptText || transcriptError)) return;
+    transcriptGuidRef.current = guid;
+    setTranscriptLoading(true);
+    setTranscriptError(false);
+    setTranscriptText(null);
+    try {
+      setTranscriptText(await fetchTranscriptText(transcriptUrl, transcriptType));
+    } catch {
+      setTranscriptError(true);
+    } finally {
+      setTranscriptLoading(false);
+    }
+  }
+
   return (
     <Reanimated.View style={[styles.container, containerStyle]} pointerEvents="box-none">
       <Reanimated.View
@@ -264,11 +292,20 @@ export function PlayerSheet() {
               </ThemedText>
             </Pressable>
 
-            <Pressable onPress={() => setShowInfo((value) => !value)} hitSlop={8} style={styles.infoToggle}>
-              <ThemedText type="small" themeColor="accent">
-                {showInfo ? t('player.hideInfo') : t('player.episodeInfo')}
-              </ThemedText>
-            </Pressable>
+            <View style={styles.metaButtonsRow}>
+              <Pressable onPress={() => setShowInfo((value) => !value)} hitSlop={8} style={styles.infoToggle}>
+                <ThemedText type="small" themeColor="accent">
+                  {showInfo ? t('player.hideInfo') : t('player.episodeInfo')}
+                </ThemedText>
+              </Pressable>
+              {nowPlaying.episode.transcriptUrl && (
+                <Pressable onPress={handleOpenTranscript} hitSlop={8} style={styles.infoToggle}>
+                  <ThemedText type="small" themeColor="accent">
+                    {t('player.transcript')}
+                  </ThemedText>
+                </Pressable>
+              )}
+            </View>
 
             {showInfo && (
               <Reanimated.View
@@ -422,6 +459,19 @@ export function PlayerSheet() {
         }}
         onClose={() => setSleepTimerModalVisible(false)}
       />
+
+      <ModalSheet visible={transcriptModalVisible} onClose={() => setTranscriptModalVisible(false)}>
+        <ThemedText type="subtitle" style={styles.centerText}>
+          {t('player.transcript')}
+        </ThemedText>
+        <ScrollView style={styles.transcriptScroll}>
+          {transcriptLoading && <ThemedText themeColor="textSecondary">{t('player.transcriptLoading')}</ThemedText>}
+          {transcriptError && <ThemedText themeColor="textSecondary">{t('player.transcriptError')}</ThemedText>}
+          {!transcriptLoading && !transcriptError && transcriptText != null && (
+            <ThemedText>{transcriptText || t('player.transcriptEmpty')}</ThemedText>
+          )}
+        </ScrollView>
+      </ModalSheet>
     </Reanimated.View>
   );
 }
@@ -492,8 +542,15 @@ const styles = StyleSheet.create({
   centerText: {
     textAlign: 'center',
   },
+  metaButtonsRow: {
+    flexDirection: 'row',
+    gap: Spacing.four,
+  },
   infoToggle: {
     marginTop: Spacing.one,
+  },
+  transcriptScroll: {
+    maxHeight: 400,
   },
   descriptionWrap: {
     alignSelf: 'stretch',

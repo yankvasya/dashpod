@@ -31,6 +31,8 @@ function toPlayableEpisode(item: DownloadedEpisode) {
     publishedAt: item.publishedAt,
     artworkUrl: item.artworkUrl,
     fileSizeBytes: item.fileSizeBytes,
+    transcriptUrl: item.transcriptUrl,
+    transcriptType: item.transcriptType,
   };
 }
 

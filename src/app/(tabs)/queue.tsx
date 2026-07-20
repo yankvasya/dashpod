@@ -28,6 +28,8 @@ function toPlayableEpisode(item: QueuedEpisode) {
     publishedAt: item.publishedAt,
     artworkUrl: item.artworkUrl,
     fileSizeBytes: null,
+    transcriptUrl: item.transcriptUrl,
+    transcriptType: item.transcriptType,
   };
 }
 

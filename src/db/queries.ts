@@ -34,6 +34,8 @@ type EpisodeRow = {
   published_at: number;
   artwork_url: string | null;
   file_size_bytes: number | null;
+  transcript_url: string | null;
+  transcript_type: string | null;
 };
 
 function toPodcast(row: PodcastRow): Podcast {
@@ -60,6 +62,8 @@ function toEpisode(row: EpisodeRow): Episode {
     publishedAt: row.published_at,
     artworkUrl: row.artwork_url,
     fileSizeBytes: row.file_size_bytes,
+    transcriptUrl: row.transcript_url,
+    transcriptType: row.transcript_type,
   };
 }
 
@@ -109,8 +113,8 @@ export async function upsertEpisodes(
   await db.withTransactionAsync(async () => {
     for (const episode of episodes) {
       await db.runAsync(
-        `INSERT INTO episodes (podcast_id, guid, title, description, audio_url, duration_seconds, published_at, artwork_url, file_size_bytes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO episodes (podcast_id, guid, title, description, audio_url, duration_seconds, published_at, artwork_url, file_size_bytes, transcript_url, transcript_type)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(guid) DO UPDATE SET
            title = excluded.title,
            description = excluded.description,
@@ -118,7 +122,9 @@ export async function upsertEpisodes(
            duration_seconds = excluded.duration_seconds,
            published_at = excluded.published_at,
            artwork_url = excluded.artwork_url,
-           file_size_bytes = excluded.file_size_bytes`,
+           file_size_bytes = excluded.file_size_bytes,
+           transcript_url = excluded.transcript_url,
+           transcript_type = excluded.transcript_type`,
         [
           podcastId,
           episode.guid,
@@ -129,6 +135,8 @@ export async function upsertEpisodes(
           episode.publishedAt,
           episode.artworkUrl,
           episode.fileSizeBytes,
+          episode.transcriptUrl,
+          episode.transcriptType,
         ]
       );
     }
@@ -442,12 +450,15 @@ export async function getDownloads(db: SQLiteDatabase): Promise<DownloadedEpisod
     published_at: number;
     position: number;
     is_finished: number;
+    transcript_url: string | null;
+    transcript_type: string | null;
   }>(
     `SELECT
        d.episode_id, e.podcast_id, e.guid, p.title AS podcast_title, e.title AS episode_title,
        e.description, COALESCE(e.artwork_url, p.artwork_url) AS artwork_url, e.audio_url, d.local_uri,
        d.file_size_bytes, d.downloaded_at, e.duration_seconds, e.published_at,
-       COALESCE(ps.position, 0) AS position, COALESCE(ps.is_finished, 0) AS is_finished
+       COALESCE(ps.position, 0) AS position, COALESCE(ps.is_finished, 0) AS is_finished,
+       e.transcript_url, e.transcript_type
      FROM downloads d
      JOIN episodes e ON e.id = d.episode_id
      JOIN podcasts p ON p.id = e.podcast_id
@@ -471,6 +482,8 @@ export async function getDownloads(db: SQLiteDatabase): Promise<DownloadedEpisod
     publishedAt: row.published_at,
     position: row.position,
     isFinished: row.is_finished === 1,
+    transcriptUrl: row.transcript_url,
+    transcriptType: row.transcript_type,
   }));
 }
 
@@ -515,12 +528,15 @@ export async function getQueue(db: SQLiteDatabase): Promise<QueuedEpisode[]> {
     added_at: number;
     playback_position: number;
     is_finished: number;
+    transcript_url: string | null;
+    transcript_type: string | null;
   }>(
     `SELECT
        qi.id AS queue_item_id, qi.episode_id, e.podcast_id, e.guid, p.title AS podcast_title,
        e.title AS episode_title, e.description, COALESCE(e.artwork_url, p.artwork_url) AS artwork_url,
        e.audio_url, e.duration_seconds, e.published_at, qi.position, qi.added_at,
-       COALESCE(ps.position, 0) AS playback_position, COALESCE(ps.is_finished, 0) AS is_finished
+       COALESCE(ps.position, 0) AS playback_position, COALESCE(ps.is_finished, 0) AS is_finished,
+       e.transcript_url, e.transcript_type
      FROM queue_items qi
      JOIN episodes e ON e.id = qi.episode_id
      JOIN podcasts p ON p.id = e.podcast_id
@@ -544,6 +560,8 @@ export async function getQueue(db: SQLiteDatabase): Promise<QueuedEpisode[]> {
     addedAt: row.added_at,
     playbackPosition: row.playback_position,
     isFinished: row.is_finished === 1,
+    transcriptUrl: row.transcript_url,
+    transcriptType: row.transcript_type,
   }));
 }
 

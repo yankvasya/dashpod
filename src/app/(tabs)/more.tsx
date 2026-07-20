@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useFocusEffect, useNavigation } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BackHandler, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +28,7 @@ const MORE_ITEMS = [
 export default function MoreScreen() {
   const theme = useTheme();
   const { t } = useTranslation();
+  const navigation = useNavigation();
   const [section, setSection] = useState<Section>(null);
 
   // useFocusEffect (not a plain useEffect) so this listener is only live while More is actually
@@ -45,6 +46,17 @@ export default function MoreScreen() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [section])
   );
+
+  // Re-tapping the already-active More tab should reset to the menu, same as re-tapping
+  // Home/My Podcasts closes an open podcast detail — see usePodcastDetailNavigation.ts. The tab
+  // router's own "reset to root" only resets a real nested stack; section here is local state.
+  useEffect(() => {
+    // @ts-expect-error -- 'tabPress' is part of the tab navigator's event map but the generic
+    // useNavigation() return type here isn't narrowed to it.
+    return navigation.addListener('tabPress', () => {
+      setSection((current) => (current ? null : current));
+    });
+  }, [navigation]);
 
   return (
     <ThemedView style={styles.container}>

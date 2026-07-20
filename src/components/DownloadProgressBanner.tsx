@@ -9,6 +9,10 @@ import { useTheme } from '@/hooks/use-theme';
 import { useDownloads } from '@/hooks/useDownloads';
 import { formatFileSize } from '@/services/downloads';
 
+// Above this many simultaneous downloads, showing one full banner each would grow the stack to
+// cover most of the screen — collapse into a single aggregate banner instead.
+const COLLAPSE_THRESHOLD = 2;
+
 export default function DownloadProgressBanner() {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -17,9 +21,36 @@ export default function DownloadProgressBanner() {
 
   if (downloadProgress.size === 0) return null;
 
+  const entries = Array.from(downloadProgress.entries());
+
+  if (entries.length > COLLAPSE_THRESHOLD) {
+    const totals = entries.reduce(
+      (sum, [, progress]) => ({
+        bytesWritten: sum.bytesWritten + progress.bytesWritten,
+        totalBytes: sum.totalBytes + progress.totalBytes,
+      }),
+      { bytesWritten: 0, totalBytes: 0 }
+    );
+    const fraction = totals.totalBytes > 0 ? totals.bytesWritten / totals.totalBytes : 0;
+    return (
+      <View style={[styles.container, { top: insets.top }]} pointerEvents="none">
+        <ThemedView type="backgroundElement" style={styles.banner}>
+          <ThemedText numberOfLines={1} type="small">
+            {t('downloads.downloadingCount', { count: entries.length })}
+          </ThemedText>
+          <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
+            <View
+              style={[styles.fill, { backgroundColor: theme.accent, width: `${Math.max(4, fraction * 100)}%` }]}
+            />
+          </View>
+        </ThemedView>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { top: insets.top }]} pointerEvents="none">
-      {Array.from(downloadProgress.entries()).map(([episodeId, progress]) => {
+      {entries.map(([episodeId, progress]) => {
         const fraction = progress.totalBytes > 0 ? progress.bytesWritten / progress.totalBytes : 0;
         return (
           <ThemedView key={episodeId} type="backgroundElement" style={styles.banner}>

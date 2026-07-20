@@ -82,6 +82,18 @@ export const Colors = {
     danger: '#FF7A7A',
     isDark: true,
   },
+  // The other three dark themes are all near-black — this one is a genuinely lighter, "dimmed"
+  // dark theme (mid-gray rather than near-black background) for people who find those too dark.
+  graphite: {
+    text: '#F2F2F2',
+    background: '#26262A',
+    backgroundElement: '#323238',
+    backgroundSelected: '#3E3E46',
+    textSecondary: '#A6A6AE',
+    accent: '#F0A83C',
+    danger: '#FF6B57',
+    isDark: true,
+  },
 } as const satisfies Record<string, ThemePalette>;
 
 export type AppThemeId = keyof typeof Colors;

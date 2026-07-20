@@ -122,6 +122,7 @@ const ru = {
     themeDark: 'Тёмная фиолетовая',
     themeMidnightBlue: 'Полночный синий',
     themeForest: 'Лесная',
+    themeGraphite: 'Графит',
     downloadsSection: 'Загрузки',
     allowMobileData: 'Разрешить загрузку через мобильный интернет',
     updates: 'Обновления',

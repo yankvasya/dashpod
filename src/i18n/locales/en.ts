@@ -114,6 +114,7 @@ export default {
     themeDark: 'Dark Purple',
     themeMidnightBlue: 'Midnight Blue',
     themeForest: 'Forest',
+    themeGraphite: 'Graphite',
     downloadsSection: 'Downloads',
     allowMobileData: 'Allow Downloads Over Mobile Data',
     updates: 'Updates',

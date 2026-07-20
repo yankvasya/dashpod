@@ -45,6 +45,7 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
     { id: 'dark', label: t('settings.themeDark') },
     { id: 'midnightBlue', label: t('settings.themeMidnightBlue') },
     { id: 'forest', label: t('settings.themeForest') },
+    { id: 'graphite', label: t('settings.themeGraphite') },
   ];
   const languageOptions: { id: AppLanguageId; label: string }[] = [
     { id: 'en', label: t('settings.languageEnglish') },

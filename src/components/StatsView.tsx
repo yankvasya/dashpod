@@ -131,7 +131,11 @@ export function StatsView({ onBack }: { onBack: () => void }) {
         {PERIOD_TYPES.map((option) => (
           <Pressable
             key={option.type}
-            onPress={() => setPeriod({ type: option.type, anchor: new Date() })}
+            onPress={() => {
+              // Already on this period type — no-op, not even a reset back to "now".
+              if (option.type === period.type) return;
+              setPeriod({ type: option.type, anchor: new Date() });
+            }}
             style={[styles.toggleButton, period.type === option.type && { backgroundColor: theme.backgroundSelected }]}>
             <ThemedText type="smallBold" themeColor={period.type === option.type ? 'text' : 'textSecondary'}>
               {option.label}

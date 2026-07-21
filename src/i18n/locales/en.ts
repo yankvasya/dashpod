@@ -131,6 +131,8 @@ export default {
     checkNow: 'Check for Updates',
     upToDate: "You're up to date",
     versionAvailable: 'v{{version}} available',
+    whatsNew: "What's New",
+    whatsNewEmpty: 'No release notes yet.',
     language: 'Language',
     languageEnglish: 'English',
     languageRussian: 'Russian',

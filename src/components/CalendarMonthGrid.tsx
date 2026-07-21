@@ -113,38 +113,47 @@ export function CalendarMonthGrid({ visible, selectedDate, onSelect, onClose }: 
       </View>
 
       <View style={styles.grid}>
-        {cells.map((date, index) => {
-          if (!date) return <View key={index} style={styles.dayCell} />;
-          const isToday = isSameDay(date, today);
-          const isSelected = isSameDay(date, selectedDate);
-          const isFuture = date.getTime() > today.getTime();
-          const totalMinutes = dailyTotals.get(formatLocalDate(date)) ?? 0;
+        {/* One row per week, each cell `flex: 1` — not a flat `flexWrap` list of `width: '14.2857%'`
+         * cells. 100/7 doesn't divide evenly, and Yoga rounding the resulting sub-pixel widths to
+         * whole pixels across 7 flat-wrapped columns was accumulating enough error to wrap the
+         * last (Sunday) column of each row onto a phantom extra row, reading as 6-day weeks with
+         * Sunday's numbers missing. flex:1 within each week's own row container divides exactly. */}
+        {Array.from({ length: cells.length / 7 }, (_, weekIndex) => (
+          <View key={weekIndex} style={styles.weekRow}>
+            {cells.slice(weekIndex * 7, weekIndex * 7 + 7).map((date, index) => {
+              if (!date) return <View key={index} style={styles.dayCell} />;
+              const isToday = isSameDay(date, today);
+              const isSelected = isSameDay(date, selectedDate);
+              const isFuture = date.getTime() > today.getTime();
+              const totalMinutes = dailyTotals.get(formatLocalDate(date)) ?? 0;
 
-          return (
-            <Pressable
-              key={index}
-              onPress={() => !isFuture && handleSelect(date)}
-              disabled={isFuture}
-              style={styles.dayCell}>
-              <View
-                style={[
-                  styles.dayNumberWrap,
-                  isSelected && { backgroundColor: theme.accent },
-                  isToday && !isSelected && { borderColor: theme.accent },
-                ]}>
-                <ThemedText
-                  type="small"
-                  themeColor={isSelected ? 'background' : isFuture ? 'textSecondary' : 'text'}
-                  style={isFuture && styles.dimmedText}>
-                  {date.getDate()}
-                </ThemedText>
-              </View>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.dayCaption}>
-                {totalMinutes >= 1 ? formatDurationCompact(totalMinutes * 60, t) : ''}
-              </ThemedText>
-            </Pressable>
-          );
-        })}
+              return (
+                <Pressable
+                  key={index}
+                  onPress={() => !isFuture && handleSelect(date)}
+                  disabled={isFuture}
+                  style={styles.dayCell}>
+                  <View
+                    style={[
+                      styles.dayNumberWrap,
+                      isSelected && { backgroundColor: theme.accent },
+                      isToday && !isSelected && { borderColor: theme.accent },
+                    ]}>
+                    <ThemedText
+                      type="small"
+                      themeColor={isSelected ? 'background' : isFuture ? 'textSecondary' : 'text'}
+                      style={isFuture && styles.dimmedText}>
+                      {date.getDate()}
+                    </ThemedText>
+                  </View>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.dayCaption}>
+                    {totalMinutes >= 1 ? formatDurationCompact(totalMinutes * 60, t) : ''}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+        ))}
       </View>
     </ModalSheet>
   );
@@ -171,11 +180,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   grid: {
+    gap: 0,
+  },
+  weekRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
   },
   dayCell: {
-    width: `${100 / 7}%`,
+    flex: 1,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',

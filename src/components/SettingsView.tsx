@@ -12,8 +12,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSettings, type AppLanguageId, type AppThemeId } from '@/hooks/useSettings';
 import { getCurrentBuildNumber } from '@/services/updateCheck';
 
-type CheckResult = 'idle' | 'upToDate' | { version: string; stage: string };
-
 const appVersion = Constants.expoConfig?.version ?? 'unknown';
 const releaseStage = (Constants.expoConfig?.extra?.releaseStage as string | undefined) ?? 'dev';
 
@@ -32,8 +30,11 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
     autoCheckForUpdates,
     setAutoCheckForUpdates,
   } = useSettings();
-  const { checkNow, checking } = useAppUpdate();
-  const [checkResult, setCheckResult] = useState<CheckResult>('idle');
+  const { checkNow, checking, updateAvailable } = useAppUpdate();
+  // Only for the transient "you're up to date" line after a manual check finds nothing — an
+  // actual pending update is read straight from updateAvailable (shared with UpdateBanner), so it
+  // shows here immediately too, not just after tapping "Check for Updates" again.
+  const [justCheckedUpToDate, setJustCheckedUpToDate] = useState(false);
   const buildNumber = getCurrentBuildNumber();
 
   const lightThemeOptions: { id: AppThemeId; label: string }[] = [
@@ -53,8 +54,9 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
   ];
 
   async function handleCheckNow() {
+    setJustCheckedUpToDate(false);
     const result = await checkNow();
-    setCheckResult(result ? { version: result.version, stage: result.stage } : 'upToDate');
+    setJustCheckedUpToDate(!result);
   }
 
   return (
@@ -127,7 +129,7 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
         </ThemedView>
 
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
-          {t('settings.updates')}
+          {t('settings.about')}
         </ThemedText>
         <ThemedView type="backgroundElement" style={styles.section}>
           <View style={styles.row}>
@@ -137,6 +139,24 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
                 : t('settings.versionLocal', { version: appVersion, stage: releaseStage })}
             </ThemedText>
           </View>
+          {/* Reflects updateAvailable directly (shared with UpdateBanner) so a background
+           * auto-check's result shows here immediately, not just after tapping Check for Updates
+           * again — "you're up to date" only ever comes from a check just run in this screen. */}
+          {updateAvailable ? (
+            <View style={[styles.row, styles.rowBorder, { borderColor: theme.backgroundSelected }]}>
+              <ThemedText themeColor="accent" style={styles.switchLabel}>
+                {t('settings.versionAvailable', { version: updateAvailable.version })}
+              </ThemedText>
+            </View>
+          ) : (
+            justCheckedUpToDate && (
+              <View style={[styles.row, styles.rowBorder, { borderColor: theme.backgroundSelected }]}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.switchLabel}>
+                  {t('settings.upToDate')}
+                </ThemedText>
+              </View>
+            )
+          )}
           <View style={[styles.row, styles.rowBorder, { borderColor: theme.backgroundSelected }]}>
             <ThemedText style={styles.switchLabel}>{t('settings.autoCheck')}</ThemedText>
             <Switch
@@ -151,13 +171,6 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
             disabled={checking}
             style={[styles.row, styles.rowBorder, { borderColor: theme.backgroundSelected }]}>
             <ThemedText themeColor="accent">{checking ? t('settings.checking') : t('settings.checkNow')}</ThemedText>
-            {checkResult !== 'idle' && (
-              <ThemedText type="small" themeColor="textSecondary">
-                {checkResult === 'upToDate'
-                  ? t('settings.upToDate')
-                  : t('settings.versionAvailable', { version: checkResult.version })}
-              </ThemedText>
-            )}
           </Pressable>
         </ThemedView>
       </ScrollView>

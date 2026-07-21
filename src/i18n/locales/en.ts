@@ -121,7 +121,7 @@ export default {
     themeGraphite: 'Graphite',
     downloadsSection: 'Downloads',
     allowMobileData: 'Allow Downloads Over Mobile Data',
-    updates: 'Updates',
+    about: 'About',
     versionBuild: 'Version {{version}} ({{stage}}) · Build {{build}}',
     versionLocal: 'Version {{version}} ({{stage}}) · Local build',
     autoCheck: 'Automatically Check for Updates',

@@ -12,6 +12,9 @@ export function useHistory(range?: DateRange) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    // Clear stale results from the previous range immediately — see the same fix in
+    // usePodcastListeningStats.ts for why (this is all local SQLite, no real network loading).
+    setDays([]);
     try {
       setDays(await getListeningHistory(db, range));
     } finally {

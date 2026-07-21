@@ -129,7 +129,7 @@ const ru = {
     themeGraphite: 'Графит',
     downloadsSection: 'Загрузки',
     allowMobileData: 'Разрешить загрузку через мобильный интернет',
-    updates: 'Обновления',
+    about: 'О приложении',
     versionBuild: 'Версия {{version}} ({{stage}}) · Сборка {{build}}',
     versionLocal: 'Версия {{version}} ({{stage}}) · Локальная сборка',
     autoCheck: 'Автоматически проверять обновления',

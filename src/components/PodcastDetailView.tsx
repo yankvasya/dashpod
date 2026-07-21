@@ -75,6 +75,11 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
       { translateY: interpolate(scrollY.value, [COLLAPSE_START, COLLAPSE_END], [6, 0], Extrapolation.CLAMP) },
     ],
   }));
+  // Up only makes sense once the header has collapsed far enough that scrolling back to the top
+  // isn't already obvious/one swipe away — fades in together with the compact title.
+  const upButtonStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [COLLAPSE_START, COLLAPSE_END], [0, 1], Extrapolation.CLAMP),
+  }));
 
   function resolveForPlayback(episode: (typeof episodes)[number]) {
     const localUri = 'id' in episode && episode.id != null ? getDownloadedUri(episode.id) : null;
@@ -176,15 +181,17 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
             </>
           )}
         </Reanimated.View>
-        <Pressable
-          onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
-          hitSlop={8}
-          style={styles.upButton}>
-          <Ionicons name="arrow-up-outline" color={theme.textSecondary} size={16} />
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            {t('podcastDetail.up')}
-          </ThemedText>
-        </Pressable>
+        <Reanimated.View style={upButtonStyle}>
+          <Pressable
+            onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
+            hitSlop={8}
+            style={styles.upButton}>
+            <Ionicons name="arrow-up-outline" color={theme.textSecondary} size={16} />
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              {t('podcastDetail.up')}
+            </ThemedText>
+          </Pressable>
+        </Reanimated.View>
       </ThemedView>
 
       {showSkeleton ? (

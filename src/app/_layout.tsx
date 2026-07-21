@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import DownloadProgressBanner from '@/components/DownloadProgressBanner';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PlayerSheet } from '@/components/player/PlayerSheet';
 import { ThemeTransitionOverlay } from '@/components/ThemeTransitionOverlay';
 import UpdateBanner from '@/components/UpdateBanner';
@@ -70,7 +71,9 @@ function RootLayoutContent() {
             </QueueProvider>
           </DownloadsProvider>
         </SubscriptionsProvider>
-        <UpdateBanner />
+        <ErrorBoundary>
+          <UpdateBanner />
+        </ErrorBoundary>
       </AppUpdateProvider>
       <ThemeTransitionOverlay background={Colors[themeId].background} />
     </ThemeProvider>

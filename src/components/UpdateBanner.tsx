@@ -79,30 +79,35 @@ export default function UpdateBanner() {
       <GestureDetector gesture={pan}>
         <Animated.View style={animatedStyle}>
           <Pressable onPress={handleUpdate} disabled={installing}>
-            <ThemedView type="backgroundElement" style={styles.banner}>
-              <View style={styles.textContainer}>
-                <ThemedText type="smallBold">
-                  {installing
-                    ? t('updateBanner.downloading')
-                    : t('updateBanner.available', { version: updateAvailable.version, stage: updateAvailable.stage })}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {installing ? `${Math.round(progress * 100)}%` : t('updateBanner.tapToInstall')}
-                </ThemedText>
+            <ThemedView type="accent" style={styles.banner}>
+              <View style={styles.topRow}>
+                <View style={styles.textContainer}>
+                  <ThemedText type="smallBold" themeColor="background">
+                    {installing
+                      ? t('updateBanner.downloading')
+                      : t('updateBanner.available', {
+                          version: updateAvailable.version,
+                          stage: updateAvailable.stage,
+                        })}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="background" style={styles.subtitleText}>
+                    {installing ? `${Math.round(progress * 100)}%` : t('updateBanner.tapToInstall')}
+                  </ThemedText>
+                </View>
+                <Pressable onPress={dismiss} hitSlop={8} style={styles.dismissButton}>
+                  <ThemedText type="smallBold" themeColor="background">
+                    ✕
+                  </ThemedText>
+                </Pressable>
               </View>
-              <Pressable onPress={dismiss} hitSlop={8} style={styles.dismissButton}>
-                <ThemedText type="smallBold" themeColor="textSecondary">
-                  ✕
-                </ThemedText>
-              </Pressable>
+              {installing && (
+                <View style={[styles.track, { backgroundColor: theme.background }]}>
+                  <View
+                    style={[styles.fill, { backgroundColor: theme.accent, width: `${Math.max(4, progress * 100)}%` }]}
+                  />
+                </View>
+              )}
             </ThemedView>
-            {installing && (
-              <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
-                <View
-                  style={[styles.fill, { backgroundColor: theme.accent, width: `${Math.max(4, progress * 100)}%` }]}
-                />
-              </View>
-            )}
           </Pressable>
         </Animated.View>
       </GestureDetector>
@@ -118,17 +123,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
   textContainer: {
     flex: 1,
     gap: Spacing.half,
+  },
+  subtitleText: {
+    opacity: 0.85,
   },
   dismissButton: {
     padding: Spacing.one,

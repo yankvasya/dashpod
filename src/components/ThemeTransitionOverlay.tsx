@@ -1,13 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Reanimated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
-const DURATION = 300;
+const HOLD_DURATION = 90;
+const FADE_DURATION = 350;
 
 /** Renders a fading overlay in the previous theme's background color whenever it changes, so
  * switching themes reads as a soft crossfade instead of every screen snapping to the new colors
  * at once. Doesn't animate individual text/icon colors underneath — those still switch instantly
  * — but the overlay covers that instant switch while it fades away.
+ *
+ * Held at full opacity for HOLD_DURATION before fading out, rather than starting the fade the
+ * instant the theme changes: every themed component re-renders with the new colors immediately
+ * (synchronously, on the same state update), but that new-colored content still has to actually
+ * paint underneath the overlay — during the fade's early, still-mostly-opaque frames, the
+ * newly-colored text was visible blended through the old-colored overlay, which (depending on the
+ * two themes' contrast) could read as the text itself flickering or briefly disappearing instead
+ * of a clean color crossfade. Holding fully opaque first means the swap happens completely hidden,
+ * and the fade that follows only ever reveals the already-settled new screen, not a color blend.
  *
  * Always mounted (no conditional `return null`) so there's no gap between "decide to show the
  * overlay" and "the overlay's View actually exists to be seen" — it used to set `overlayColor`
@@ -26,7 +36,10 @@ export function ThemeTransitionOverlay({ background }: { background: string }) {
     setOverlayColor(previousBackground.current);
     previousBackground.current = background;
     opacity.value = 1;
-    opacity.value = withTiming(0, { duration: DURATION });
+    opacity.value = withDelay(
+      HOLD_DURATION,
+      withTiming(0, { duration: FADE_DURATION, easing: Easing.out(Easing.cubic) })
+    );
   }, [background, opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));

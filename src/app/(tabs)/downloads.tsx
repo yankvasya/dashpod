@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet } from 'react-native';
 import Reanimated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -10,6 +10,7 @@ import { EpisodeDetailSheet } from '@/components/EpisodeDetailSheet';
 import { ModalSheet } from '@/components/ModalSheet';
 import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
 import { ShimmerView } from '@/components/ShimmerView';
+import { StorageView } from '@/components/StorageView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
@@ -44,35 +45,12 @@ export default function DownloadsScreen() {
   const { nowPlaying, status, episodeLoading, loadEpisode, play, pause, expandPlayer } = usePlayer();
   const { isQueued, addEpisode, removeEpisode } = useQueue();
   const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
-  const [storageSheetVisible, setStorageSheetVisible] = useState(false);
+  const [storageViewVisible, setStorageViewVisible] = useState(false);
   const [detailEpisode, setDetailEpisode] = useState<DownloadedEpisode | null>(null);
 
   const listenedDownloads = downloads.filter((item) => item.isFinished);
   const listenedSize = listenedDownloads.reduce((sum, item) => sum + item.fileSizeBytes, 0);
   const allSize = downloads.reduce((sum, item) => sum + item.fileSizeBytes, 0);
-
-  const storageByPodcast = useMemo(() => {
-    const byPodcast = new Map<
-      number,
-      { podcastId: number; podcastTitle: string; artworkUrl: string; episodeCount: number; totalBytes: number }
-    >();
-    for (const item of downloads) {
-      const existing = byPodcast.get(item.podcastId);
-      if (existing) {
-        existing.episodeCount += 1;
-        existing.totalBytes += item.fileSizeBytes;
-      } else {
-        byPodcast.set(item.podcastId, {
-          podcastId: item.podcastId,
-          podcastTitle: item.podcastTitle,
-          artworkUrl: item.artworkUrl,
-          episodeCount: 1,
-          totalBytes: item.fileSizeBytes,
-        });
-      }
-    }
-    return Array.from(byPodcast.values()).sort((a, b) => b.totalBytes - a.totalBytes);
-  }, [downloads]);
 
   async function handlePlayPause(item: DownloadedEpisode) {
     if (nowPlaying?.episode.id === item.episodeId) {
@@ -127,6 +105,10 @@ export default function DownloadsScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {storageViewVisible ? (
+          <StorageView onBack={() => setStorageViewVisible(false)} />
+        ) : (
+          <>
         <ThemedView style={styles.titleRow}>
           <ThemedText type="title" numberOfLines={1} style={styles.title}>
             {t('downloads.title')}
@@ -141,7 +123,7 @@ export default function DownloadsScreen() {
         </ThemedView>
 
         {downloads.length > 0 && (
-          <Pressable onPress={() => setStorageSheetVisible(true)} hitSlop={8} style={styles.storageRow}>
+          <Pressable onPress={() => setStorageViewVisible(true)} hitSlop={8} style={styles.storageRow}>
             <ThemedText type="small" themeColor="textSecondary">
               {t('downloads.episodesUsed', { count: downloads.length, size: formatFileSize(allSize) })}
             </ThemedText>
@@ -233,6 +215,8 @@ export default function DownloadsScreen() {
           }}
         />
         )}
+          </>
+        )}
       </SafeAreaView>
 
       <ModalSheet visible={deleteMenuVisible} onClose={() => setDeleteMenuVisible(false)} contentStyle={styles.sheet}>
@@ -263,36 +247,6 @@ export default function DownloadsScreen() {
             {t('downloads.allDownloaded', { count: downloads.length, size: formatFileSize(allSize) })}
           </ThemedText>
         </Pressable>
-      </ModalSheet>
-
-      <ModalSheet
-        visible={storageSheetVisible}
-        onClose={() => setStorageSheetVisible(false)}
-        contentStyle={styles.sheet}>
-        <ThemedText type="subtitle" style={styles.centerText}>
-          {t('downloads.storageTitle')}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-          {t('downloads.storageTotal', { count: downloads.length, size: formatFileSize(allSize) })}
-        </ThemedText>
-        <FlatList
-          data={storageByPodcast}
-          keyExtractor={(item) => String(item.podcastId)}
-          style={styles.storageList}
-          ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
-          renderItem={({ item }) => (
-            <ThemedView style={styles.storagePodcastRow}>
-              <Image source={{ uri: item.artworkUrl }} style={styles.storageArtwork} />
-              <ThemedView style={styles.rowText}>
-                <ThemedText numberOfLines={1}>{item.podcastTitle}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {t('downloads.episodeCount', { count: item.episodeCount })}
-                </ThemedText>
-              </ThemedView>
-              <ThemedText type="smallBold">{formatFileSize(item.totalBytes)}</ThemedText>
-            </ThemedView>
-          )}
-        />
       </ModalSheet>
 
       <EpisodeDetailSheet
@@ -361,20 +315,6 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.three,
-  },
-  storageList: {
-    maxHeight: 320,
-  },
-  storagePodcastRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  storageArtwork: {
-    width: 40,
-    height: 40,
-    borderRadius: Spacing.two,
   },
   listContent: {
     paddingHorizontal: Spacing.four,

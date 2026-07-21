@@ -46,6 +46,8 @@ export default {
     storageTitle: 'Storage',
     storageTotal_one: '{{count}} episode · {{size}} total',
     storageTotal_other: '{{count}} episodes · {{size}} total',
+    deleteSelected_one: 'Delete {{count}} episode ({{size}})',
+    deleteSelected_other: 'Delete {{count}} episodes ({{size}})',
     episodeCount_one: '{{count}} episode',
     episodeCount_other: '{{count}} episodes',
     downloadingEpisode: 'Downloading {{title}}',

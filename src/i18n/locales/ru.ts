@@ -140,6 +140,8 @@ const ru = {
     checkNow: 'Проверить обновления',
     upToDate: 'У вас последняя версия',
     versionAvailable: 'Доступна версия v{{version}}',
+    whatsNew: 'Что нового',
+    whatsNewEmpty: 'Пока нет описаний релизов.',
     language: 'Язык',
     languageEnglish: 'English',
     languageRussian: 'Русский',

@@ -50,3 +50,41 @@ export function isNewerBuildAvailable(latest: ReleaseInfo): boolean {
   // A build number of 0 means this isn't a CI build (local dev) — nothing meaningful to compare.
   return current > 0 && latest.buildNumber > current;
 }
+
+export interface ReleaseNote {
+  version: string;
+  stage: string;
+  buildNumber: number;
+  body: string;
+  publishedAt: string;
+}
+
+/** Fetches recent GitHub releases for an in-app "What's New" list. Skips releases whose tag
+ * doesn't match the expected format or that have no description — earlier releases in this
+ * project's history predate writing real changelog text, so this naturally shows only the
+ * releases that actually have something to say. Returns [] on any failure (offline, rate-limited),
+ * same "couldn't check, don't bother the user" treatment as fetchLatestRelease. */
+export async function fetchReleaseHistory(limit = 10): Promise<ReleaseNote[]> {
+  try {
+    const response = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=${limit}`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+
+    const notes: ReleaseNote[] = [];
+    for (const release of data) {
+      const match = TAG_PATTERN.exec(release.tag_name ?? '');
+      if (!match?.groups || !release.body) continue;
+      notes.push({
+        version: match.groups.version,
+        stage: match.groups.stage,
+        buildNumber: parseInt(match.groups.build, 10),
+        body: release.body,
+        publishedAt: release.published_at,
+      });
+    }
+    return notes;
+  } catch {
+    return [];
+  }
+}

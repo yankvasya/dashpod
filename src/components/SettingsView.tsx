@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
+import { ReleaseNotesView } from '@/components/ReleaseNotesView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
@@ -35,7 +36,12 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
   // actual pending update is read straight from updateAvailable (shared with UpdateBanner), so it
   // shows here immediately too, not just after tapping "Check for Updates" again.
   const [justCheckedUpToDate, setJustCheckedUpToDate] = useState(false);
+  const [whatsNewVisible, setWhatsNewVisible] = useState(false);
   const buildNumber = getCurrentBuildNumber();
+
+  if (whatsNewVisible) {
+    return <ReleaseNotesView onBack={() => setWhatsNewVisible(false)} />;
+  }
 
   const lightThemeOptions: { id: AppThemeId; label: string }[] = [
     { id: 'light', label: t('settings.themeLight') },
@@ -171,6 +177,11 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
             disabled={checking}
             style={[styles.row, styles.rowBorder, { borderColor: theme.backgroundSelected }]}>
             <ThemedText themeColor="accent">{checking ? t('settings.checking') : t('settings.checkNow')}</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => setWhatsNewVisible(true)}
+            style={[styles.row, styles.rowBorder, { borderColor: theme.backgroundSelected }]}>
+            <ThemedText themeColor="accent">{t('settings.whatsNew')}</ThemedText>
           </Pressable>
         </ThemedView>
       </ScrollView>

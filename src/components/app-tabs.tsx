@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useSettings, type OptionalTabId } from '@/hooks/useSettings';
 import { useTheme } from '@/hooks/use-theme';
 import type en from '@/i18n/locales/en';
 
@@ -15,27 +16,41 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 type TabsTranslationKey = keyof typeof en.tabs;
 
 const TABS = [
-  { name: 'index', href: '/', labelKey: 'home', icon: 'home-outline' },
-  { name: 'my-podcasts', href: '/my-podcasts', labelKey: 'myPodcasts', icon: 'library-outline' },
-  { name: 'downloads', href: '/downloads', labelKey: 'downloads', icon: 'download-outline' },
-  { name: 'queue', href: '/queue', labelKey: 'queue', icon: 'list-outline' },
-  { name: 'more', href: '/more', labelKey: 'more', icon: 'ellipsis-horizontal-outline' },
-] as const satisfies { name: string; href: string; labelKey: TabsTranslationKey; icon: IconName }[];
+  { name: 'index', href: '/', labelKey: 'home', icon: 'home-outline', optional: undefined },
+  { name: 'my-podcasts', href: '/my-podcasts', labelKey: 'myPodcasts', icon: 'library-outline', optional: undefined },
+  { name: 'downloads', href: '/downloads', labelKey: 'downloads', icon: 'download-outline', optional: 'downloads' },
+  { name: 'queue', href: '/queue', labelKey: 'queue', icon: 'list-outline', optional: 'queue' },
+  { name: 'more', href: '/more', labelKey: 'more', icon: 'ellipsis-horizontal-outline', optional: undefined },
+] as const satisfies {
+  name: string;
+  href: string;
+  labelKey: TabsTranslationKey;
+  icon: IconName;
+  optional?: OptionalTabId;
+}[];
 
 /** A hand-built tab bar instead of NativeTabs — NativeTabs renders each platform's real native
  * widget (UITabBar on iOS, Material's BottomNavigationView on Android), which look and animate
  * differently from each other by design and can't be reconciled through styling props. This is
  * the same underlying `expo-router/ui` primitive the web build already used, now shared by every
- * platform so the tab bar is pixel- and animation-identical everywhere. */
+ * platform so the tab bar is pixel- and animation-identical everywhere.
+ *
+ * Downloads/Queue are the only tabs a user can unpin (via Settings > Customize Tabs) — Home, My
+ * Podcasts, and More always stay put. Unpinning one doesn't remove the route, just its TabTrigger
+ * here; more.tsx renders the same screen inline (see DownloadsView/QueueView) when it's unpinned,
+ * matching how History/Stats/Settings already work — not a pushed route, see the comment on
+ * MoreScreen for why that pattern was rejected earlier in this project. */
 export default function AppTabs() {
   const { t } = useTranslation();
+  const { pinnedTabs } = useSettings();
+  const visibleTabs = TABS.filter((tab) => !tab.optional || pinnedTabs.includes(tab.optional));
 
   return (
     <Tabs>
       <TabSlot />
       <TabList asChild>
         <TabBar>
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
               <TabButton icon={tab.icon} label={t(`tabs.${tab.labelKey}`)} />
             </TabTrigger>

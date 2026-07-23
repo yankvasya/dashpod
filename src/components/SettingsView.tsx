@@ -11,7 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useTheme } from '@/hooks/use-theme';
-import { useSettings, type AppLanguageId, type AppThemeId } from '@/hooks/useSettings';
+import { useSettings, type AppLanguageId, type AppThemeId, type OptionalTabId } from '@/hooks/useSettings';
 import { getCurrentBuildNumber } from '@/services/updateCheck';
 
 const appVersion = Constants.expoConfig?.version ?? 'unknown';
@@ -31,6 +31,8 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
     setAllowMobileDataDownloads,
     autoCheckForUpdates,
     setAutoCheckForUpdates,
+    pinnedTabs,
+    setPinnedTabs,
   } = useSettings();
   const { checkNow, checking, updateAvailable } = useAppUpdate();
   // Only for the transient "you're up to date" line after a manual check finds nothing — an
@@ -68,6 +70,10 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
     setJustCheckedUpToDate(false);
     const result = await checkNow();
     setJustCheckedUpToDate(!result);
+  }
+
+  function toggleTab(tab: OptionalTabId) {
+    setPinnedTabs(pinnedTabs.includes(tab) ? pinnedTabs.filter((id) => id !== tab) : [...pinnedTabs, tab]);
   }
 
   return (
@@ -123,6 +129,33 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
             </Pressable>
           ))}
         </ThemedView>
+
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+          {t('settings.customizeTabs')}
+        </ThemedText>
+        <ThemedView type="backgroundElement" style={styles.section}>
+          <Pressable onPress={() => toggleTab('downloads')} style={styles.row}>
+            <ThemedText style={styles.switchLabel}>{t('tabs.downloads')}</ThemedText>
+            <Ionicons
+              name={pinnedTabs.includes('downloads') ? 'checkbox' : 'square-outline'}
+              color={pinnedTabs.includes('downloads') ? theme.accent : theme.textSecondary}
+              size={22}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => toggleTab('queue')}
+            style={[styles.row, styles.rowBorder, { borderColor: theme.backgroundSelected }]}>
+            <ThemedText style={styles.switchLabel}>{t('tabs.queue')}</ThemedText>
+            <Ionicons
+              name={pinnedTabs.includes('queue') ? 'checkbox' : 'square-outline'}
+              color={pinnedTabs.includes('queue') ? theme.accent : theme.textSecondary}
+              size={22}
+            />
+          </Pressable>
+        </ThemedView>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.customizeTabsNote}>
+          {t('settings.customizeTabsNote')}
+        </ThemedText>
 
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
           {t('settings.downloadsSection')}
@@ -239,5 +272,8 @@ const styles = StyleSheet.create({
   switchLabel: {
     flex: 1,
     marginRight: Spacing.three,
+  },
+  customizeTabsNote: {
+    paddingHorizontal: Spacing.two,
   },
 });

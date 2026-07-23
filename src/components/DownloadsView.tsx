@@ -1,0 +1,401 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { FlatList, Pressable, StyleSheet } from 'react-native';
+import Reanimated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+
+import { EpisodeDetailSheet } from '@/components/EpisodeDetailSheet';
+import { ModalSheet } from '@/components/ModalSheet';
+import { EpisodePlayButton } from '@/components/player/EpisodePlayButton';
+import { ShimmerView } from '@/components/ShimmerView';
+import { StorageView } from '@/components/StorageView';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { BottomTabInset, MiniPlayerHeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { useDownloads } from '@/hooks/useDownloads';
+import { usePlayer } from '@/hooks/usePlayer';
+import { useQueue } from '@/hooks/useQueue';
+import { formatFileSize } from '@/services/downloads';
+import type { DownloadedEpisode } from '@/types/podcast';
+import { formatDate, formatDuration, formatProgress } from '@/utils/format';
+
+function toPlayableEpisode(item: DownloadedEpisode) {
+  return {
+    id: item.episodeId,
+    guid: item.guid,
+    title: item.episodeTitle,
+    description: item.description,
+    audioUrl: item.localUri,
+    durationSeconds: item.durationSeconds,
+    publishedAt: item.publishedAt,
+    artworkUrl: item.artworkUrl,
+    fileSizeBytes: item.fileSizeBytes,
+    transcriptUrl: item.transcriptUrl,
+    transcriptType: item.transcriptType,
+  };
+}
+
+/** Downloads content, without its own SafeAreaView — used both as the pinned Downloads tab (see
+ * (tabs)/downloads.tsx, which supplies the SafeAreaView) and, when unpinned via Settings >
+ * Customize Tabs, rendered inline in More with an onBack button — same pattern as
+ * HistoryView/StatsView/SettingsView. */
+export function DownloadsView({ onBack }: { onBack?: () => void }) {
+  const theme = useTheme();
+  const { t, i18n } = useTranslation();
+  const { downloads, loading, removeDownload, deleteAllListened, deleteAll } = useDownloads();
+  const { nowPlaying, status, episodeLoading, loadEpisode, play, pause, expandPlayer } = usePlayer();
+  const { isQueued, addEpisode, removeEpisode } = useQueue();
+  const [deleteMenuVisible, setDeleteMenuVisible] = useState(false);
+  const [storageViewVisible, setStorageViewVisible] = useState(false);
+  const [detailEpisode, setDetailEpisode] = useState<DownloadedEpisode | null>(null);
+
+  const listenedDownloads = downloads.filter((item) => item.isFinished);
+  const listenedSize = listenedDownloads.reduce((sum, item) => sum + item.fileSizeBytes, 0);
+  const allSize = downloads.reduce((sum, item) => sum + item.fileSizeBytes, 0);
+
+  async function handlePlayPause(item: DownloadedEpisode) {
+    if (nowPlaying?.episode.id === item.episodeId) {
+      if (status.playing) {
+        pause();
+      } else {
+        play();
+      }
+    } else {
+      await loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
+      play();
+    }
+  }
+
+  function handleViewEpisode(item: DownloadedEpisode) {
+    setDetailEpisode(item);
+  }
+
+  function handleOpenPlayer(item: DownloadedEpisode) {
+    if (nowPlaying?.episode.id !== item.episodeId) {
+      loadEpisode(toPlayableEpisode(item), item.podcastTitle, item.artworkUrl, item.podcastId);
+    }
+    setDetailEpisode(null);
+    expandPlayer();
+  }
+
+  async function handleQueuePress(item: DownloadedEpisode) {
+    if (isQueued(item.episodeId)) {
+      await removeEpisode(item.episodeId);
+    } else {
+      await addEpisode(item.episodeId);
+    }
+  }
+
+  function handleDeletePress() {
+    setDeleteMenuVisible(true);
+  }
+
+  const showSkeleton = loading && downloads.length === 0;
+
+  const detailIsCurrent = detailEpisode ? nowPlaying?.episode.id === detailEpisode.episodeId : false;
+  const detailProgress = detailEpisode
+    ? detailIsCurrent
+      ? status.duration > 0
+        ? status.currentTime / status.duration
+        : 0
+      : detailEpisode.durationSeconds > 0
+        ? detailEpisode.position / detailEpisode.durationSeconds
+        : 0
+    : 0;
+
+  if (storageViewVisible) {
+    return <StorageView onBack={() => setStorageViewVisible(false)} />;
+  }
+
+  return (
+    <>
+      {onBack && (
+        <Pressable onPress={onBack} hitSlop={8} style={styles.backButton}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            {t('common.back')}
+          </ThemedText>
+        </Pressable>
+      )}
+
+      <ThemedView style={styles.titleRow}>
+        <ThemedText type="title" numberOfLines={1} style={styles.title}>
+          {t('downloads.title')}
+        </ThemedText>
+        {downloads.length > 0 && (
+          <Pressable onPress={handleDeletePress} hitSlop={8} style={styles.deleteAllButton}>
+            <ThemedText type="smallBold" themeColor="accent">
+              {t('downloads.delete')}
+            </ThemedText>
+          </Pressable>
+        )}
+      </ThemedView>
+
+      {downloads.length > 0 && (
+        <Pressable onPress={() => setStorageViewVisible(true)} hitSlop={8} style={styles.storageRow}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('downloads.episodesUsed', { count: downloads.length, size: formatFileSize(allSize) })}
+          </ThemedText>
+          <Ionicons name="chevron-forward-outline" color={theme.textSecondary} size={14} />
+        </Pressable>
+      )}
+
+      {showSkeleton ? (
+        <ThemedView style={styles.listContent}>
+          {Array.from({ length: 6 }).map((_, index) => (
+            <SkeletonDownloadRow key={index} />
+          ))}
+        </ThemedView>
+      ) : (
+        <FlatList
+          data={downloads}
+          keyExtractor={(item) => String(item.episodeId)}
+          contentContainerStyle={[
+            styles.listContent,
+            nowPlaying && { paddingBottom: BottomTabInset + Spacing.four + MiniPlayerHeight },
+          ]}
+          ListEmptyComponent={
+            <ThemedText themeColor="textSecondary" style={styles.emptyText}>
+              {t('downloads.empty')}
+            </ThemedText>
+          }
+          ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
+          renderItem={({ item }) => {
+            const isCurrent = nowPlaying?.episode.id === item.episodeId;
+            const progress = isCurrent
+              ? status.duration > 0
+                ? status.currentTime / status.duration
+                : 0
+              : item.durationSeconds > 0
+                ? item.position / item.durationSeconds
+                : 0;
+            const isLoading = isCurrent && (episodeLoading || status.isBuffering);
+            const queued = isCurrent || isQueued(item.episodeId);
+            const durationLabel =
+              isCurrent && status.duration > 0
+                ? formatProgress(status.currentTime, status.duration, t)
+                : item.position > 0 && !item.isFinished && item.durationSeconds > 0
+                  ? formatProgress(item.position, item.durationSeconds, t)
+                  : formatDuration(item.durationSeconds, t);
+
+            return (
+              <Reanimated.View
+                entering={FadeIn.duration(200)}
+                exiting={FadeOut.duration(200)}
+                layout={LinearTransition.duration(200)}>
+                <ThemedView style={[styles.row, item.isFinished && styles.rowFinished]}>
+                  <Pressable style={styles.rowMain} onPress={() => handleViewEpisode(item)}>
+                    <Image source={{ uri: item.artworkUrl }} style={styles.artwork} />
+                    <ThemedView style={styles.rowText}>
+                      <ThemedText numberOfLines={1} themeColor="textSecondary" type="small">
+                        {item.podcastTitle}
+                      </ThemedText>
+                      <ThemedText numberOfLines={2}>{item.episodeTitle}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {[durationLabel, formatDate(item.downloadedAt, i18n.language), formatFileSize(item.fileSizeBytes)]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                  <Pressable onPress={() => removeDownload(item.episodeId)} hitSlop={8} style={styles.deleteButton}>
+                    <Ionicons name="trash-outline" color={theme.textSecondary} size={18} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleQueuePress(item)}
+                    hitSlop={8}
+                    style={[styles.iconButton, { backgroundColor: queued ? theme.accent : 'transparent' }]}>
+                    <Ionicons name="list-outline" color={queued ? theme.background : theme.textSecondary} size={18} />
+                  </Pressable>
+                  <EpisodePlayButton
+                    playing={isCurrent && status.playing}
+                    loading={isLoading}
+                    progress={progress}
+                    onPress={() => handlePlayPause(item)}
+                  />
+                </ThemedView>
+              </Reanimated.View>
+            );
+          }}
+        />
+      )}
+
+      <ModalSheet visible={deleteMenuVisible} onClose={() => setDeleteMenuVisible(false)} contentStyle={styles.sheet}>
+        <ThemedText type="subtitle" style={styles.centerText}>
+          {t('downloads.deletePodcastsTitle')}
+        </ThemedText>
+        <Pressable
+          onPress={() => {
+            setDeleteMenuVisible(false);
+            deleteAllListened();
+          }}
+          disabled={listenedDownloads.length === 0}
+          style={[styles.deleteOutlineButton, { borderColor: theme.danger, opacity: listenedDownloads.length === 0 ? 0.4 : 1 }]}>
+          <Ionicons name="trash-outline" color={theme.danger} size={16} />
+          <ThemedText type="smallBold" themeColor="danger">
+            {t('downloads.onlyListened', { count: listenedDownloads.length, size: formatFileSize(listenedSize) })}
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            setDeleteMenuVisible(false);
+            deleteAll();
+          }}
+          disabled={downloads.length === 0}
+          style={[styles.deleteFilledButton, { backgroundColor: theme.danger, opacity: downloads.length === 0 ? 0.4 : 1 }]}>
+          <Ionicons name="trash-outline" color="#FFFFFF" size={16} />
+          <ThemedText type="smallBold" style={styles.whiteText}>
+            {t('downloads.allDownloaded', { count: downloads.length, size: formatFileSize(allSize) })}
+          </ThemedText>
+        </Pressable>
+      </ModalSheet>
+
+      <EpisodeDetailSheet
+        visible={detailEpisode != null}
+        episode={
+          detailEpisode
+            ? {
+                title: detailEpisode.episodeTitle,
+                podcastTitle: detailEpisode.podcastTitle,
+                artworkUrl: detailEpisode.artworkUrl,
+                description: detailEpisode.description,
+                durationSeconds: detailEpisode.durationSeconds,
+                publishedAt: detailEpisode.publishedAt,
+              }
+            : null
+        }
+        playing={detailIsCurrent && status.playing}
+        loading={detailIsCurrent && (episodeLoading || status.isBuffering)}
+        progress={detailProgress}
+        onPlayPause={() => detailEpisode && handlePlayPause(detailEpisode)}
+        onOpenPlayer={() => detailEpisode && handleOpenPlayer(detailEpisode)}
+        onClose={() => setDetailEpisode(null)}
+      />
+    </>
+  );
+}
+
+function SkeletonDownloadRow() {
+  return (
+    <ThemedView style={styles.row}>
+      <ShimmerView style={styles.artwork} />
+      <ThemedView style={styles.rowText}>
+        <ShimmerView style={styles.skeletonTitle} />
+        <ShimmerView style={styles.skeletonMeta} />
+      </ThemedView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  backButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.two,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.three,
+  },
+  title: {
+    flexShrink: 1,
+    fontSize: 32,
+    lineHeight: 40,
+  },
+  deleteAllButton: {
+    flexShrink: 0,
+    marginLeft: Spacing.two,
+  },
+  storageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.three,
+  },
+  listContent: {
+    paddingHorizontal: Spacing.four,
+    paddingBottom: BottomTabInset + Spacing.four,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
+  },
+  rowFinished: {
+    opacity: 0.5,
+  },
+  rowMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  artwork: {
+    width: 48,
+    height: 48,
+    borderRadius: Spacing.two,
+  },
+  rowText: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  skeletonTitle: {
+    width: '70%',
+    height: 16,
+    borderRadius: Spacing.one,
+  },
+  skeletonMeta: {
+    width: '40%',
+    height: 12,
+    borderRadius: Spacing.one,
+  },
+  deleteButton: {
+    padding: Spacing.one,
+  },
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+  },
+  emptyText: {
+    textAlign: 'center',
+    paddingVertical: Spacing.five,
+  },
+  sheet: {
+    gap: Spacing.three,
+  },
+  centerText: {
+    textAlign: 'center',
+  },
+  deleteOutlineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+  },
+  deleteFilledButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  whiteText: {
+    color: '#FFFFFF',
+  },
+});

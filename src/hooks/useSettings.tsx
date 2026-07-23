@@ -12,15 +12,23 @@ const VALID_THEME_IDS = Object.keys(Colors) as AppThemeId[];
 
 export type AppLanguageId = 'en' | 'ru';
 
+/** Tabs that can be toggled between the main tab bar and the More menu — Home, My Podcasts, and
+ * More itself are always pinned, not configurable. See app-tabs.tsx and more.tsx. */
+export type OptionalTabId = 'downloads' | 'queue';
+
 const THEME_KEY = 'themeId';
 const LANGUAGE_KEY = 'languageId';
 const ALLOW_MOBILE_DATA_DOWNLOADS_KEY = 'allowMobileDataDownloads';
 const AUTO_CHECK_FOR_UPDATES_KEY = 'autoCheckForUpdates';
+const PINNED_TABS_KEY = 'pinnedTabs';
 const DEFAULT_THEME: AppThemeId = 'light';
 const DEFAULT_LANGUAGE: AppLanguageId = 'en';
 // Conservative default — most podcast apps default to WiFi-only downloads.
 const DEFAULT_ALLOW_MOBILE_DATA_DOWNLOADS = false;
 const DEFAULT_AUTO_CHECK_FOR_UPDATES = true;
+// Matches the tab bar's shape before this setting existed, so upgrading users see no change.
+const DEFAULT_PINNED_TABS: OptionalTabId[] = ['downloads', 'queue'];
+const VALID_OPTIONAL_TAB_IDS: OptionalTabId[] = ['downloads', 'queue'];
 
 interface SettingsContextValue {
   loading: boolean;
@@ -32,6 +40,8 @@ interface SettingsContextValue {
   setAllowMobileDataDownloads: (allow: boolean) => void;
   autoCheckForUpdates: boolean;
   setAutoCheckForUpdates: (autoCheck: boolean) => void;
+  pinnedTabs: OptionalTabId[];
+  setPinnedTabs: (tabs: OptionalTabId[]) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -47,6 +57,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     DEFAULT_ALLOW_MOBILE_DATA_DOWNLOADS
   );
   const [autoCheckForUpdates, setAutoCheckForUpdatesState] = useState(DEFAULT_AUTO_CHECK_FOR_UPDATES);
+  const [pinnedTabs, setPinnedTabsState] = useState<OptionalTabId[]>(DEFAULT_PINNED_TABS);
 
   useEffect(() => {
     getAllSettings(db)
@@ -63,6 +74,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         }
         if (settings[AUTO_CHECK_FOR_UPDATES_KEY] != null) {
           setAutoCheckForUpdatesState(settings[AUTO_CHECK_FOR_UPDATES_KEY] === '1');
+        }
+        if (settings[PINNED_TABS_KEY] != null) {
+          const parsed = settings[PINNED_TABS_KEY]
+            .split(',')
+            .filter((id): id is OptionalTabId => VALID_OPTIONAL_TAB_IDS.includes(id as OptionalTabId));
+          setPinnedTabsState(parsed);
         }
       })
       // Falls back to defaults on failure — still needs to clear `loading` no matter what,
@@ -103,6 +120,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [db]
   );
 
+  const setPinnedTabs = useCallback(
+    (tabs: OptionalTabId[]) => {
+      setPinnedTabsState(tabs);
+      setSetting(db, PINNED_TABS_KEY, tabs.join(','));
+    },
+    [db]
+  );
+
   const value = useMemo(
     () => ({
       loading,
@@ -114,6 +139,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setAllowMobileDataDownloads,
       autoCheckForUpdates,
       setAutoCheckForUpdates,
+      pinnedTabs,
+      setPinnedTabs,
     }),
     [
       loading,
@@ -125,6 +152,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setAllowMobileDataDownloads,
       autoCheckForUpdates,
       setAutoCheckForUpdates,
+      pinnedTabs,
+      setPinnedTabs,
     ]
   );
 

@@ -130,6 +130,8 @@ const ru = {
     themeMidnightBlue: 'Полночный синий',
     themeForest: 'Лесная',
     themeGraphite: 'Графит',
+    customizeTabs: 'Настройка вкладок',
+    customizeTabsNote: 'Неотмеченные вкладки переезжают в «Ещё» вместо основной панели.',
     downloadsSection: 'Загрузки',
     allowMobileData: 'Разрешить загрузку через мобильный интернет',
     dataSection: 'Данные',

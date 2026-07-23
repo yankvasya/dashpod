@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
+import { BackupRestoreView } from '@/components/BackupRestoreView';
 import { ReleaseNotesView } from '@/components/ReleaseNotesView';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -37,10 +38,14 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
   // shows here immediately too, not just after tapping "Check for Updates" again.
   const [justCheckedUpToDate, setJustCheckedUpToDate] = useState(false);
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
+  const [backupVisible, setBackupVisible] = useState(false);
   const buildNumber = getCurrentBuildNumber();
 
   if (whatsNewVisible) {
     return <ReleaseNotesView onBack={() => setWhatsNewVisible(false)} />;
+  }
+  if (backupVisible) {
+    return <BackupRestoreView onBack={() => setBackupVisible(false)} />;
   }
 
   const lightThemeOptions: { id: AppThemeId; label: string }[] = [
@@ -132,6 +137,15 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
               thumbColor="#FFFFFF"
             />
           </View>
+        </ThemedView>
+
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+          {t('settings.dataSection')}
+        </ThemedText>
+        <ThemedView type="backgroundElement" style={styles.section}>
+          <Pressable onPress={() => setBackupVisible(true)} style={styles.row}>
+            <ThemedText themeColor="accent">{t('settings.backupRestore')}</ThemedText>
+          </Pressable>
         </ThemedView>
 
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>

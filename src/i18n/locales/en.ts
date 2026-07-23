@@ -121,6 +121,8 @@ export default {
     themeMidnightBlue: 'Midnight Blue',
     themeForest: 'Forest',
     themeGraphite: 'Graphite',
+    customizeTabs: 'Customize Tabs',
+    customizeTabsNote: 'Unchecked tabs move into More instead of the main tab bar.',
     downloadsSection: 'Downloads',
     allowMobileData: 'Allow Downloads Over Mobile Data',
     dataSection: 'Data',

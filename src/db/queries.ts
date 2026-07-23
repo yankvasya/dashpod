@@ -233,6 +233,69 @@ export async function setPlaybackState(db: SQLiteDatabase, state: PlaybackState)
   );
 }
 
+/** Every playback state, keyed by the episode's stable (feed_url, guid) identity instead of its
+ * local auto-increment id — for backup export, since a restore on a fresh install gets new ids. */
+export async function getAllPlaybackStatesForBackup(
+  db: SQLiteDatabase
+): Promise<{ feedUrl: string; guid: string; position: number; isFinished: boolean; updatedAt: number }[]> {
+  const rows = await db.getAllAsync<{
+    feed_url: string;
+    guid: string;
+    position: number;
+    is_finished: number;
+    updated_at: number;
+  }>(
+    `SELECT p.feed_url, e.guid, ps.position, ps.is_finished, ps.updated_at
+     FROM playback_state ps
+     JOIN episodes e ON e.id = ps.episode_id
+     JOIN podcasts p ON p.id = e.podcast_id`
+  );
+  return rows.map((row) => ({
+    feedUrl: row.feed_url,
+    guid: row.guid,
+    position: row.position,
+    isFinished: row.is_finished === 1,
+    updatedAt: row.updated_at,
+  }));
+}
+
+/** Every listening event, keyed by (feed_url, guid) — see getAllPlaybackStatesForBackup. */
+export async function getAllListeningEventsForBackup(db: SQLiteDatabase): Promise<
+  {
+    feedUrl: string;
+    guid: string;
+    startedAt: number;
+    endedAt: number;
+    positionStart: number;
+    positionEnd: number;
+    listenedSeconds: number;
+  }[]
+> {
+  const rows = await db.getAllAsync<{
+    feed_url: string;
+    guid: string;
+    started_at: number;
+    ended_at: number;
+    position_start: number;
+    position_end: number;
+    listened_seconds: number;
+  }>(
+    `SELECT p.feed_url, e.guid, le.started_at, le.ended_at, le.position_start, le.position_end, le.listened_seconds
+     FROM listening_events le
+     JOIN episodes e ON e.id = le.episode_id
+     JOIN podcasts p ON p.id = e.podcast_id`
+  );
+  return rows.map((row) => ({
+    feedUrl: row.feed_url,
+    guid: row.guid,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    positionStart: row.position_start,
+    positionEnd: row.position_end,
+    listenedSeconds: row.listened_seconds,
+  }));
+}
+
 type DayStatsRow = {
   date: string;
   episode_id: number;

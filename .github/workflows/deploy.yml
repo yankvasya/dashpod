@@ -1,18 +1,17 @@
-name: Deploy
+name: Deploy to server
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to VPS via SSH
+      - name: SSH and deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: bash ~/projects/dashpod/deploy.sh
+          script: cd ~/projects/dashpod && git pull origin main && bash deploy.sh

@@ -41,8 +41,7 @@ yarn-error.*
 *.apk
 *.aab
 
-example
-
 # generated native folders
 /ios
 /android
+

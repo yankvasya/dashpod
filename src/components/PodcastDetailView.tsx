@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRef, useState } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Reanimated, {
   Extrapolation,
@@ -81,69 +82,85 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
     opacity: interpolate(scrollY.value, [COLLAPSE_START, COLLAPSE_END], [0, 1], Extrapolation.CLAMP),
   }));
 
-  function resolveForPlayback(episode: (typeof episodes)[number]) {
-    const localUri = 'id' in episode && episode.id != null ? getDownloadedUri(episode.id) : null;
-    return localUri ? { ...episode, audioUrl: localUri } : episode;
-  }
+  const resolveForPlayback = useCallback(
+    (episode: (typeof episodes)[number]) => {
+      const localUri = 'id' in episode && episode.id != null ? getDownloadedUri(episode.id) : null;
+      return localUri ? { ...episode, audioUrl: localUri } : episode;
+    },
+    [getDownloadedUri]
+  );
 
-  async function handlePlayPause(episode: (typeof episodes)[number]) {
-    if (nowPlaying?.episode.guid === episode.guid) {
-      if (status.playing) {
-        pause();
-      } else {
+  const handlePlayPause = useCallback(
+    async (episode: (typeof episodes)[number]) => {
+      if (nowPlaying?.episode.guid === episode.guid) {
+        if (status.playing) {
+          pause();
+        } else {
+          play();
+        }
+      } else if (podcast) {
+        await loadEpisode(
+          resolveForPlayback(episode),
+          podcast.title,
+          podcast.artworkUrl,
+          'id' in podcast ? podcast.id : null
+        );
         play();
       }
-    } else if (podcast) {
-      await loadEpisode(
-        resolveForPlayback(episode),
-        podcast.title,
-        podcast.artworkUrl,
-        'id' in podcast ? podcast.id : null
-      );
-      play();
-    }
-  }
+    },
+    [nowPlaying, status.playing, podcast, loadEpisode, play, pause, resolveForPlayback]
+  );
 
-  function handleViewEpisode(episode: (typeof episodes)[number]) {
+  const handleViewEpisode = useCallback((episode: (typeof episodes)[number]) => {
     setDetailEpisode(episode);
-  }
+  }, []);
 
-  function handleOpenPlayer(episode: (typeof episodes)[number]) {
-    if (nowPlaying?.episode.guid !== episode.guid && podcast) {
-      loadEpisode(
-        resolveForPlayback(episode),
-        podcast.title,
-        podcast.artworkUrl,
-        'id' in podcast ? podcast.id : null
-      );
-    }
-    setDetailEpisode(null);
-    expandPlayer();
-  }
+  const handleOpenPlayer = useCallback(
+    (episode: (typeof episodes)[number]) => {
+      if (nowPlaying?.episode.guid !== episode.guid && podcast) {
+        loadEpisode(
+          resolveForPlayback(episode),
+          podcast.title,
+          podcast.artworkUrl,
+          'id' in podcast ? podcast.id : null
+        );
+      }
+      setDetailEpisode(null);
+      expandPlayer();
+    },
+    [nowPlaying, podcast, loadEpisode, resolveForPlayback, expandPlayer]
+  );
 
-  async function handleDownloadPress(episode: Episode) {
-    if (isDownloaded(episode.id)) {
-      await removeDownload(episode.id);
-    } else if (podcast) {
-      try {
-        await downloadEpisode(episode, podcast.title);
-      } catch (error) {
-        if (error instanceof MobileDataDownloadBlockedError) {
-          Alert.alert(t('podcastDetail.mobileDataBlockedTitle'), t('podcastDetail.mobileDataBlockedMessage'));
-        } else {
-          throw error;
+  const handleDownloadPress = useCallback(
+    async (episode: Episode) => {
+      if (isDownloaded(episode.id)) {
+        await removeDownload(episode.id);
+      } else if (podcast) {
+        try {
+          await downloadEpisode(episode, podcast.title);
+        } catch (error) {
+          if (error instanceof MobileDataDownloadBlockedError) {
+            Alert.alert(t('podcastDetail.mobileDataBlockedTitle'), t('podcastDetail.mobileDataBlockedMessage'));
+          } else {
+            throw error;
+          }
         }
       }
-    }
-  }
+    },
+    [isDownloaded, removeDownload, podcast, downloadEpisode, t]
+  );
 
-  async function handleQueuePress(episode: Episode) {
-    if (isQueued(episode.id)) {
-      await removeEpisode(episode.id);
-    } else {
-      await addEpisode(episode.id);
-    }
-  }
+  const handleQueuePress = useCallback(
+    async (episode: Episode) => {
+      if (isQueued(episode.id)) {
+        await removeEpisode(episode.id);
+      } else {
+        await addEpisode(episode.id);
+      }
+    },
+    [isQueued, removeEpisode, addEpisode]
+  );
+
 
   // Only true on the very first load of a podcast that isn't cached locally yet (e.g. opened
   // straight from search) — refreshes of an already-subscribed podcast keep showing the existing
@@ -253,7 +270,7 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
             </ThemedText>
           ) : null
         }
-        ItemSeparatorComponent={() => <ThemedView type="backgroundElement" style={styles.separator} />}
+        ItemSeparatorComponent={EpisodeSeparator}
         renderItem={({ item }) => {
           const isCurrent = nowPlaying?.episode.guid === item.guid;
           const hasId = 'id' in item && item.id != null;
@@ -278,54 +295,26 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
                 : formatDuration(item.durationSeconds, t);
 
           return (
-            <ThemedView style={[styles.episodeRow, isFinished && styles.episodeRowFinished]}>
-              <Pressable style={styles.episodeText} onPress={() => handleViewEpisode(item)}>
-                <ThemedText numberOfLines={2}>{item.title}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {[
-                    formatDate(item.publishedAt, i18n.language),
-                    durationLabel,
-                    !downloaded && item.fileSizeBytes ? formatFileSize(item.fileSizeBytes) : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </ThemedText>
-              </Pressable>
-              {hasId && (
-                <Pressable
-                  onPress={() => handleDownloadPress(item as Episode)}
-                  disabled={downloading}
-                  hitSlop={8}
-                  style={[styles.iconButton, { backgroundColor: downloaded ? theme.accent : 'transparent' }]}>
-                  {downloading ? (
-                    <ActivityIndicator size="small" color={theme.textSecondary} />
-                  ) : (
-                    <Ionicons
-                      name="download-outline"
-                      color={downloaded ? theme.background : theme.textSecondary}
-                      size={18}
-                    />
-                  )}
-                </Pressable>
-              )}
-              {hasId && (
-                <Pressable
-                  onPress={() => handleQueuePress(item as Episode)}
-                  hitSlop={8}
-                  style={[styles.iconButton, { backgroundColor: queued ? theme.accent : 'transparent' }]}>
-                  <Ionicons name="list-outline" color={queued ? theme.background : theme.textSecondary} size={18} />
-                </Pressable>
-              )}
-              <EpisodePlayButton
-                playing={isCurrent && status.playing}
-                loading={isLoading}
-                progress={progress}
-                onPress={() => handlePlayPause(item)}
-              />
-            </ThemedView>
+            <EpisodeRow
+              item={item}
+              isCurrent={isCurrent}
+              playing={isCurrent && status.playing}
+              isLoading={isLoading}
+              isFinished={isFinished}
+              downloaded={downloaded}
+              downloading={downloading}
+              queued={queued}
+              progress={progress}
+              durationLabel={durationLabel}
+              onView={handleViewEpisode}
+              onPlayPause={handlePlayPause}
+              onDownload={handleDownloadPress}
+              onQueue={handleQueuePress}
+            />
           );
         }}
         />
+
       )}
 
       <EpisodeDetailSheet
@@ -353,6 +342,106 @@ export function PodcastDetailView({ feedUrl, onBack }: PodcastDetailViewProps) {
   );
 }
 
+type EpisodeRowItem = Episode | Omit<Episode, 'id' | 'podcastId'>;
+
+interface EpisodeRowProps {
+  item: EpisodeRowItem;
+  isCurrent: boolean;
+  playing: boolean;
+  isLoading: boolean;
+  isFinished: boolean;
+  downloaded: boolean;
+  downloading: boolean;
+  queued: boolean;
+  /** 0-1 */
+  progress: number;
+  durationLabel: string;
+  onView: (episode: EpisodeRowItem) => void;
+  onPlayPause: (episode: EpisodeRowItem) => void;
+  onDownload: (episode: Episode) => void;
+  onQueue: (episode: Episode) => void;
+}
+
+/** A single episode row in the podcast detail list. Memoized so that during playback (when
+ * `status.currentTime` ticks every frame) only the currently-playing row re-renders — the rest
+ * keep their previous props and are skipped by React.memo. This avoids re-rendering the whole
+ * list on every status update, which was a source of jank on first open and when switching
+ * episodes (see issues #7 / #48). */
+const EpisodeRow = memo(function EpisodeRow({
+  item,
+  isCurrent,
+  playing,
+  isLoading,
+  isFinished,
+  downloaded,
+  downloading,
+  queued,
+  progress,
+  durationLabel,
+  onView,
+  onPlayPause,
+  onDownload,
+  onQueue,
+}: EpisodeRowProps) {
+  const theme = useTheme();
+  const { i18n } = useTranslation();
+  const hasId = 'id' in item && item.id != null;
+
+  return (
+    <ThemedView style={[styles.episodeRow, isFinished && styles.episodeRowFinished]}>
+      <Pressable style={styles.episodeText} onPress={() => onView(item)}>
+        <ThemedText numberOfLines={2}>{item.title}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {[
+            formatDate(item.publishedAt, i18n.language),
+            durationLabel,
+            !downloaded && item.fileSizeBytes ? formatFileSize(item.fileSizeBytes) : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </ThemedText>
+      </Pressable>
+      {hasId && (
+        <Pressable
+          onPress={() => onDownload(item as Episode)}
+          disabled={downloading}
+          hitSlop={8}
+          style={[styles.iconButton, { backgroundColor: downloaded ? theme.accent : 'transparent' }]}>
+          {downloading ? (
+            <ActivityIndicator size="small" color={theme.textSecondary} />
+          ) : (
+            <Ionicons
+              name="download-outline"
+              color={downloaded ? theme.background : theme.textSecondary}
+              size={18}
+            />
+          )}
+        </Pressable>
+      )}
+      {hasId && (
+        <Pressable
+          onPress={() => onQueue(item as Episode)}
+          hitSlop={8}
+          style={[styles.iconButton, { backgroundColor: queued ? theme.accent : 'transparent' }]}>
+          <Ionicons name="list-outline" color={queued ? theme.background : theme.textSecondary} size={18} />
+        </Pressable>
+      )}
+      <EpisodePlayButton
+        playing={playing}
+        loading={isLoading}
+        progress={progress}
+        onPress={() => onPlayPause(item)}
+      />
+    </ThemedView>
+  );
+});
+
+/** Thin hairline between episode rows — extracted to a module-level component so its identity is
+ * stable across renders (FlatList won't re-create it every time the parent re-renders). */
+function EpisodeSeparator() {
+  return <ThemedView type="backgroundElement" style={styles.separator} />;
+}
+
 function SkeletonHeader() {
   return (
     <ThemedView style={styles.header}>
@@ -365,6 +454,7 @@ function SkeletonHeader() {
     </ThemedView>
   );
 }
+
 
 function SkeletonEpisodeRow() {
   return (

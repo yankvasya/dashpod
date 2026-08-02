@@ -32,6 +32,30 @@ Then open in an [iOS Simulator](https://docs.expo.dev/workflow/ios-simulator/), 
 
 Contributions are welcome — open an issue or a pull request. This project is developed primarily on iOS; Android testing and fixes are especially appreciated.
 
+## Self-hosting
+
+Dashpod is built as a static web application and does not require a backend API process.
+
+### Build
+To compile the static files, run:
+```bash
+npm run build
+```
+This generates the static assets in the `dist/` directory.
+
+### Reverse Proxy
+To host Dashpod, configure your reverse proxy (e.g., Caddy) to serve the static files.
+
+Example Caddy block:
+```caddy
+http://dashpod.yankvasya.dev {
+    root * /var/snap/caddy/common/sites/dashpod
+    file_server
+    encode gzip
+    try_files {path} /index.html
+}
+```
+
 ## License
 
 [GPL-3.0](LICENSE) — you're free to use, modify, and redistribute this code, but any distributed derivative work must also be open source under the same license.

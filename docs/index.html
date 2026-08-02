@@ -142,6 +142,37 @@
     margin: 0;
     line-height: 1.4;
   }
+  .gallery {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+  @media (max-width: 640px) {
+    .gallery {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  .gallery img {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+  .demo {
+    width: 100%;
+    max-width: 320px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    margin-bottom: 48px;
+  }
+  .section-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 20px;
+  }
   footer {
     font-size: 13px;
     color: var(--text-secondary);
@@ -166,7 +197,6 @@
       <a class="button button-secondary" href="https://github.com/yankvasya/dashpod/releases" target="_blank" rel="noopener">
         View on GitHub
       </a>
-
     </div>
     <p class="button-note" id="download-note">Free and open source (GPL-3.0). Android only for now.</p>
 
@@ -184,21 +214,47 @@
         <p class="feature-desc">See how much you've listened, by day, week, month, or podcast.</p>
       </div>
       <div class="feature">
-        <p class="feature-title">Themes &amp; languages</p>
+        <p class="feature-title">Themes & languages</p>
         <p class="feature-desc">Several light and dark themes, English and Russian.</p>
       </div>
     </div>
+
+    <section id="screenshots">
+      <h2 class="section-title">Screenshots</h2>
+      <div class="gallery">
+        <img src="screenshots/search.jpg" alt="Search" onerror="this.style.display='none'" />
+        <img src="screenshots/episode_about.jpg" alt="Episode details" onerror="this.style.display='none'" />
+        <img src="screenshots/queue.jpg" alt="Playback queue" onerror="this.style.display='none'" />
+        <img src="screenshots/downloads.jpg" alt="Downloads" onerror="this.style.display='none'" />
+      </div>
+    </section>
+
+
 
     <footer>
       <a href="https://github.com/yankvasya/dashpod" target="_blank" rel="noopener">github.com/yankvasya/dashpod</a>
       · GPL-3.0 licensed
     </footer>
+
   </main>
 
   <script>
     (function () {
+      // Hide the whole Screenshots section until at least one image actually loads.
+      var shots = document.getElementById('screenshots');
+      var imgs = shots ? shots.querySelectorAll('img') : [];
+      var loaded = 0;
+      for (var i = 0; i < imgs.length; i++) {
+        (function (img) {
+          if (img.complete && img.naturalWidth > 0) { loaded++; return; }
+          img.addEventListener('load', function () { loaded++; if (loaded > 0) shots.style.display = ''; });
+        })(imgs[i]);
+      }
+      if (loaded === 0) shots.style.display = 'none';
+
       var button = document.getElementById('download-button');
       var note = document.getElementById('download-note');
+
       fetch('https://api.github.com/repos/yankvasya/dashpod/releases/latest')
         .then(function (response) {
           if (!response.ok) throw new Error('request failed');

@@ -13,7 +13,20 @@ A minimalist, open-source podcast client built with [Expo](https://expo.dev) and
 
 All listening data is stored locally in SQLite — nothing leaves your device.
 
+## Screenshots
+
+> Screenshots live in [`docs/screenshots/`](docs/screenshots/README.md). Drop your captures there and they'll show up here and on the [landing page](https://dashpod.yankvasya.dev).
+
+<p align="center">
+  <img src="docs/screenshots/search.jpg" alt="Search" width="200" />
+  <img src="docs/screenshots/episode_about.jpg" alt="Episode details" width="200" />
+  <img src="docs/screenshots/queue.jpg" alt="Playback queue" width="200" />
+  <img src="docs/screenshots/downloads.jpg" alt="Downloads" width="200" />
+</p>
+
+
 ## Status
+
 
 This is an early-stage personal project, developed iteratively and tested on iOS Simulator. There is no published build yet (App Store or Play Store) — for now, run it from source via Expo.
 
@@ -76,8 +89,6 @@ http://dashpod.yankvasya.dev {
     }
 }
 ```
-
-
 
 ## License
 

@@ -28,17 +28,6 @@ All listening data is stored locally in SQLite — nothing leaves your device.
 
 This is an early-stage personal project, developed iteratively and tested on iOS Simulator. There is no published build yet (App Store or Play Store) — for now, run it from source via Expo.
 
-## Getting started
-
-Requires Expo SDK 57 / React Native's New Architecture (mandatory, not optional in this project).
-
-```bash
-npm install
-npx expo start
-```
-
-Then open in an [iOS Simulator](https://docs.expo.dev/workflow/ios-simulator/), [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/), or a [development build](https://docs.expo.dev/develop/development-builds/introduction/) on a physical device. This project uses native modules (SQLite, background audio, native tabs), so it will not run in Expo Go.
-
 ## Contributing
 
 Want to contribute? Check out [CONTRIBUTING.md](CONTRIBUTING.md).

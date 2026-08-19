@@ -1,0 +1,18 @@
+# Dashpod
+
+> A minimalist, open-source podcast app for Android. Offline downloads, a real queue, listening stats, and themes.
+
+## About
+
+Dashpod is a free, open-source podcast app for Android. It focuses on a clean, minimalist interface with essential features:
+
+- **Offline downloads** — Download episodes and listen without a connection.
+- **Real playback queue** — Line up episodes across podcasts, not just one at a time.
+- **Listening stats** — See how much you've listened, by day, week, month, or podcast.
+- **Themes & languages** — Several light and dark themes, English and Russian.
+
+## Links
+
+- [GitHub repository](https://github.com/yankvasya/dashpod)
+- [Releases](https://github.com/yankvasya/dashpod/releases)
+- [Website](https://dashpod.yankvasya.dev/)

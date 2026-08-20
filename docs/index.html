@@ -247,19 +247,8 @@
 
   <script>
     (function () {
-      // Hide the whole Screenshots section until at least one image actually loads.
-      var shots = document.getElementById('screenshots');
-      var imgs = shots ? shots.querySelectorAll('img') : [];
-      var loaded = 0;
-      for (var i = 0; i < imgs.length; i++) {
-        (function (img) {
-          if (img.complete && img.naturalWidth > 0) { loaded++; return; }
-          img.addEventListener('load', function () { loaded++; if (loaded > 0) shots.style.display = ''; });
-        })(imgs[i]);
-      }
-      if (loaded === 0) shots.style.display = 'none';
-
       var button = document.getElementById('download-button');
+
       var note = document.getElementById('download-note');
 
       fetch('https://api.github.com/repos/yankvasya/dashpod/releases/latest')
